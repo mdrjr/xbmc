@@ -41,6 +41,8 @@ INCLUDES += -I$(prefix)/include/amcodec
 INCLUDES += -I$(prefix)/include/amplayer
 endif
 
+SRCS += DVDVideoCodecMFC.cpp
+
 LIB=Video.a
 
 include @abs_top_srcdir@/Makefile.include
