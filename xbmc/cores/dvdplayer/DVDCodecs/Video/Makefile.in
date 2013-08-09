@@ -22,6 +22,7 @@ SRCS += OpenMax.cpp
 SRCS += OpenMaxVideo.cpp
 SRCS += DVDVideoCodecOpenMax.cpp
 endif
+SRCS += DVDVideoCodecMFC.cpp
 
 LIB=Video.a
 
