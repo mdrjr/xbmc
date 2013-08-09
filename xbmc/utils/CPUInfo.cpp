@@ -235,6 +235,11 @@ CCPUInfo::CCPUInfo(void)
   // read from the new location of the temperature data on new kernels, 2.6.39, 3.0 etc
   if (m_fProcTemperature == NULL)   
     m_fProcTemperature = fopen("/sys/class/hwmon/hwmon0/temp1_input", "r");
+  // ODROID
+  if (m_fProcTemperature == NULL)
+    m_fProcTemperature = fopen("/sys/devices/virtual/thermal/thermal_zone0/temp", "r");
+  if (m_fProcTemperature == NULL)
+    m_fProcTemperature = fopen("/sys/devices/platform/tmu/temperature", "r");  
   
   m_fCPUInfo = fopen("/proc/cpuinfo", "r");
   m_cpuCount = 0;
