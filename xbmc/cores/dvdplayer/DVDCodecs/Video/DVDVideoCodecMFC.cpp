@@ -348,7 +348,11 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
   msg("\e[1;31mFIMC OUTPUT\e[0m S_CROP %dx%d", crop.c.width, crop.c.height);
   int width = m_iDecodedWidth;
   int height = m_iDecodedHeight;
-
+/*
+  int width = 1280;
+  int height = 720;
+*/
+  
   // Request mfc capture buffers
   m_MFCCaptureBuffersCount = CLinuxV4l2::RequestBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_MFCCaptureBuffersCount);
   if (m_MFCCaptureBuffersCount == V4L2_ERROR) {
@@ -392,6 +396,7 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
   memzero(fmt);
 //  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12MT;
   fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_YUV420M;
+//  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_RGB444;
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
   fmt.fmt.pix_mp.width = width;
   fmt.fmt.pix_mp.height = height;
@@ -418,10 +423,7 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
 		return false;
 	}
   msg("\e[1;31mFIMC CAPTURE\e[0m S_CROP %dx%d", crop.c.width, crop.c.height);
-/*
-  m_iConvertedWidth = crop.c.width;
-  m_iConvertedHeight = crop.c.height;
-*/
+
   memzero(fmt);
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
   ret = ioctl(m_iConverterHandle, VIDIOC_G_FMT, &fmt);
@@ -549,11 +551,11 @@ int CDVDVideoCodecMFC::Decode(BYTE* pData, int iSize, double dts, double pts) {
     int demuxer_bytes = iSize;
     uint8_t *demuxer_content = pData;
 
-    while (index < m_MFCOutputBuffersCount & m_v4l2MFCOutputBuffers[index].bQueue)
+    while (index < m_MFCOutputBuffersCount && m_v4l2MFCOutputBuffers[index].bQueue)
       index++;
 
     if (index >= m_MFCOutputBuffersCount) { //all input buffers are busy, dequeue needed
-      ret = CLinuxV4l2::PollOutput(m_iDecoderHandle, 1000/30); //30 fps max, but this is an MFC limit
+      ret = CLinuxV4l2::PollOutput(m_iDecoderHandle, 1000); // POLLIN - Capture, POLLOUT - Output
       if (ret == V4L2_ERROR) {
         err("\e[1;32mMFC OUTPUT\e[0m PollInput Error");
         return VC_ERROR;
@@ -565,8 +567,10 @@ int CDVDVideoCodecMFC::Decode(BYTE* pData, int iSize, double dts, double pts) {
         }
         dbg("\e[1;32mMFC OUTPUT\e[0m -> %d", index);
         m_v4l2MFCOutputBuffers[index].bQueue = false;
-      } else if (ret == V4L2_BUSY) { // CAPTURE buffer is still busy
+/*
+      } else if (ret == V4L2_BUSY) { // buffer is still busy
         return VC_BUFFER;
+*/
       } else {
         err("\e[1;32mMFC OUTPUT\e[0m What the fuck is that? %d", ret);
         return VC_ERROR;
@@ -586,7 +590,7 @@ int CDVDVideoCodecMFC::Decode(BYTE* pData, int iSize, double dts, double pts) {
       fast_memcpy((uint8_t *)m_v4l2MFCOutputBuffers[index].cPlane[0], demuxer_content, demuxer_bytes);
       m_v4l2MFCOutputBuffers[index].iBytesUsed[0] = demuxer_bytes;
 
-      msg("Frame of size %d", demuxer_bytes);
+      dbg("Frame of size %d", demuxer_bytes);
 
       ret = CLinuxV4l2::QueueBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_MEMORY_MMAP, m_v4l2MFCOutputBuffers[index].iNumPlanes, index, &m_v4l2MFCOutputBuffers[index]);
       if (ret < 0) {
@@ -620,6 +624,7 @@ void CDVDVideoCodecMFC::Reset() {
 
 bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
   m_videoBuffer.format = RENDER_FMT_YUV420P;
+//  m_videoBuffer.format = RENDER_FMT_BYPASS;
 
   if(m_pts.size()) {
     m_videoBuffer.pts = m_pts.front();
@@ -676,17 +681,7 @@ bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
         m_bFIMCStartConverter = false;
       }
 
-      m_iFIMCdequeuedBufferNumber = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, V4L2_NUM_MAX_PLANES);
-      if (m_iFIMCdequeuedBufferNumber < 0) {
-        if (m_iFIMCdequeuedBufferNumber == -EAGAIN) // Dequeue buffer not ready, need more data on input. EAGAIN = 11
-          return VC_BUFFER;
-        err("\e[1;31mFIMC CAPTURE\e[0m error dequeue output buffer, got number %d", m_iFIMCdequeuedBufferNumber);
-        return VC_ERROR;
-      }
-      dbg("\e[1;31mFIMC CAPTURE\e[0m -> %d", m_iFIMCdequeuedBufferNumber);
-      m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue = false;
-
-      ret = CLinuxV4l2::PollOutput(m_iConverterHandle, 1000/30); // 30 fps max, but this is an MFC limit
+      ret = CLinuxV4l2::PollOutput(m_iConverterHandle, 1000/25); // 25 fps
       if (ret == V4L2_ERROR) {
         err("\e[1;32mMFC OUTPUT\e[0m PollInput Error");
         return VC_ERROR;
@@ -699,12 +694,22 @@ bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
         }
         dbg("\e[1;31mFIMC OUTPUT\e[0m -> %d", index);
         m_v4l2MFCCaptureBuffers[index].bQueue = false;
-      } else if (ret == V4L2_BUSY) { // CAPTURE buffer is still busy
+      } else if (ret == V4L2_BUSY) { // buffer is still busy
         return VC_BUFFER;
       } else {
         err("\e[1;31mFIMC OUTPUT\e[0m What the fuck is that? %d", ret);
         return VC_ERROR;
       }
+
+      m_iFIMCdequeuedBufferNumber = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, V4L2_NUM_MAX_PLANES);
+      if (m_iFIMCdequeuedBufferNumber < 0) {
+        if (m_iFIMCdequeuedBufferNumber == -EAGAIN) // Dequeue buffer not ready, need more data on input. EAGAIN = 11
+          return VC_BUFFER;
+        err("\e[1;31mFIMC CAPTURE\e[0m error dequeue output buffer, got number %d", m_iFIMCdequeuedBufferNumber);
+        return VC_ERROR;
+      }
+      dbg("\e[1;31mFIMC CAPTURE\e[0m -> %d", m_iFIMCdequeuedBufferNumber);
+      m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue = false;
 
     }
 
@@ -743,6 +748,10 @@ bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
   m_videoBuffer.data[3] = 0;
 
   m_videoBuffer.iLineSize[0] = m_iConvertedWidth;
+/*
+  m_videoBuffer.iLineSize[1] = 0;
+  m_videoBuffer.iLineSize[2] = 0;
+*/
   m_videoBuffer.iLineSize[1] = m_iConvertedWidth >> 1;
   m_videoBuffer.iLineSize[2] = m_iConvertedWidth >> 1;
   m_videoBuffer.iLineSize[3] = 0;
