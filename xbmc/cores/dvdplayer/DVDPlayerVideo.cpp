@@ -989,6 +989,7 @@ static std::string GetRenderFormatName(ERenderFormat format)
     case RENDER_FMT_YUV420P16: return "YV12P16";
     case RENDER_FMT_YUV420P10: return "YV12P10";
     case RENDER_FMT_NV12:      return "NV12";
+    case RENDER_FMT_NV12MT:    return "NV12MT";
     case RENDER_FMT_UYVY422:   return "UYVY";
     case RENDER_FMT_YUYV422:   return "YUY2";
     case RENDER_FMT_VDPAU:     return "VDPAU";
@@ -1066,7 +1067,6 @@ int CDVDPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)
           |  GetFlagsColorPrimaries(pPicture->color_primaries)
           |  GetFlagsColorTransfer(pPicture->color_transfer);
 
-    CStdString formatstr = GetRenderFormatName(pPicture->format);
 
     if(m_bAllowFullscreen)
     {
@@ -1253,6 +1253,7 @@ void CDVDPlayerVideo::AutoCrop(DVDVideoPicture *pPicture)
 {
   if ((pPicture->format == RENDER_FMT_YUV420P) ||
      (pPicture->format == RENDER_FMT_NV12) ||
+     (pPicture->format == RENDER_FMT_NV12MT) ||
      (pPicture->format == RENDER_FMT_YUYV422) ||
      (pPicture->format == RENDER_FMT_UYVY422))
   {
