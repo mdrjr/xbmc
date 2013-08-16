@@ -44,6 +44,8 @@
 #include <sys/mman.h>
 #include <dirent.h>
 
+#define USE_FIMC 1
+
 #ifdef CLASSNAME
 #undef CLASSNAME
 #endif
@@ -348,10 +350,6 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
   msg("\e[1;31mFIMC OUTPUT\e[0m S_CROP %dx%d", crop.c.width, crop.c.height);
   int width = m_iDecodedWidth;
   int height = m_iDecodedHeight;
-/*
-  int width = 1280;
-  int height = 720;
-*/
   
   // Request mfc capture buffers
   m_MFCCaptureBuffersCount = CLinuxV4l2::RequestBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_MFCCaptureBuffersCount);
@@ -394,9 +392,11 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
   
   // Setup fimc capture
   memzero(fmt);
-//  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12MT;
+#ifdef USE_FIMC
   fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_YUV420M;
-//  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_RGB444;
+#else
+  fmt.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_NV12MT;
+#endif
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
   fmt.fmt.pix_mp.width = width;
   fmt.fmt.pix_mp.height = height;
@@ -545,6 +545,7 @@ void CDVDVideoCodecMFC::SetDropState(bool bDrop) {
 
 int CDVDVideoCodecMFC::Decode(BYTE* pData, int iSize, double dts, double pts) {
   int ret = 0;
+  unsigned int mtime = XbmcThreads::SystemClockMillis();
 
   if(pData) {
     int index = 0;
@@ -613,6 +614,8 @@ int CDVDVideoCodecMFC::Decode(BYTE* pData, int iSize, double dts, double pts) {
   }
   dbg("\e[1;32mMFC CAPTURE\e[0m -> %d", index);
   m_v4l2MFCCaptureBuffers[index].bQueue = false;
+  
+  dbg("MFC time: %d", XbmcThreads::SystemClockMillis() - mtime);
 
   m_index.push(index);
 
@@ -623,8 +626,11 @@ void CDVDVideoCodecMFC::Reset() {
 }
 
 bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
+#ifdef USE_FIMC
   m_videoBuffer.format = RENDER_FMT_YUV420P;
-//  m_videoBuffer.format = RENDER_FMT_BYPASS;
+#else
+  m_videoBuffer.format = RENDER_FMT_NV12MT;
+#endif
 
   if(m_pts.size()) {
     m_videoBuffer.pts = m_pts.front();
@@ -649,6 +655,8 @@ bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
       m_videoBuffer.iFlags      |= DVP_FLAG_DROPPED;
       msg("Dropping frame with index %d", index);
     } else {
+      unsigned int ftime = XbmcThreads::SystemClockMillis();
+#ifdef USE_FIMC
       int ret = 0;
       if (m_iFIMCdequeuedBufferNumber > 0 && !m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue) {
         ret = CLinuxV4l2::QueueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].iNumPlanes, m_iFIMCdequeuedBufferNumber, &m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber]);
@@ -679,6 +687,7 @@ bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
         else
           err("\e[1;31mFIMC CAPTURE\e[0m Failed to Stream ON");
         m_bFIMCStartConverter = false;
+        return VC_BUFFER;
       }
 
       ret = CLinuxV4l2::PollOutput(m_iConverterHandle, 1000/25); // 25 fps
@@ -710,8 +719,10 @@ bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
       }
       dbg("\e[1;31mFIMC CAPTURE\e[0m -> %d", m_iFIMCdequeuedBufferNumber);
       m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue = false;
-
+#endif
+      dbg("FIMC time: %d", XbmcThreads::SystemClockMillis() - ftime);
     }
+
 
     // Queue dequeued or dropped frame back to MFC CAPTURE
     if (&m_v4l2MFCCaptureBuffers[index] && !m_v4l2MFCCaptureBuffers[index].bQueue) {
@@ -726,43 +737,50 @@ bool CDVDVideoCodecMFC::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
       dbg("\e[1;32mMFC CAPTURE\e[0m <- %d", ret);
     }
 
+    //m_videoBuffer.iFlags          |= m_bDropPictures ? DVP_FLAG_DROPPED : 0;
+
+    m_videoBuffer.color_range     = 0;
+    m_videoBuffer.color_matrix    = 4;
+
+    m_videoBuffer.iDisplayWidth   = m_iConvertedWidth;
+    m_videoBuffer.iDisplayHeight  = m_iConvertedHeight;
+    m_videoBuffer.iWidth          = m_iConvertedWidth;
+    m_videoBuffer.iHeight         = m_iConvertedHeight;
+
+    m_videoBuffer.data[0] = 0;
+    m_videoBuffer.data[1] = 0;
+    m_videoBuffer.data[2] = 0;
+    m_videoBuffer.data[3] = 0;
+  #ifdef USE_FIMC
+    m_videoBuffer.iLineSize[0] = m_iConvertedWidth;
+    m_videoBuffer.iLineSize[1] = m_iConvertedWidth >> 1;
+    m_videoBuffer.iLineSize[2] = m_iConvertedWidth >> 1;
+    m_videoBuffer.iLineSize[3] = 0;
+    if (!m_bDropPictures)
+    {
+      m_videoBuffer.data[0] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[0];
+      m_videoBuffer.data[1] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[1];
+      m_videoBuffer.data[2] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[2];
+    }
+  #else
+    m_videoBuffer.iLineSize[0] = m_iConvertedWidth;
+    m_videoBuffer.iLineSize[1] = m_iConvertedWidth;
+    m_videoBuffer.iLineSize[2] = 0;
+    m_videoBuffer.iLineSize[3] = 0;
+    if (!m_bDropPictures)
+    {
+      m_videoBuffer.data[0] = (BYTE*)m_v4l2MFCCaptureBuffers[index].cPlane[0];
+      m_videoBuffer.data[1] = (BYTE*)m_v4l2MFCCaptureBuffers[index].cPlane[1];
+    }
+  #endif  
+
+    *pDvdVideoPicture = m_videoBuffer;
+
   } else {
     m_videoBuffer.iFlags        &= DVP_FLAG_ALLOCATED;
     m_videoBuffer.iFlags        |= DVP_FLAG_DROPPED;
-    dbg("Queue empty");
+    msg("Queue empty");
   }
-
-  //m_videoBuffer.iFlags          |= m_bDropPictures ? DVP_FLAG_DROPPED : 0;
-
-  m_videoBuffer.color_range     = 0;
-  m_videoBuffer.color_matrix    = 4;
-
-  m_videoBuffer.iDisplayWidth   = m_iConvertedWidth;
-  m_videoBuffer.iDisplayHeight  = m_iConvertedHeight;
-  m_videoBuffer.iWidth          = m_iConvertedWidth;
-  m_videoBuffer.iHeight         = m_iConvertedHeight;
-          
-  m_videoBuffer.data[0] = 0;
-  m_videoBuffer.data[1] = 0;
-  m_videoBuffer.data[2] = 0;
-  m_videoBuffer.data[3] = 0;
-
-  m_videoBuffer.iLineSize[0] = m_iConvertedWidth;
-/*
-  m_videoBuffer.iLineSize[1] = 0;
-  m_videoBuffer.iLineSize[2] = 0;
-*/
-  m_videoBuffer.iLineSize[1] = m_iConvertedWidth >> 1;
-  m_videoBuffer.iLineSize[2] = m_iConvertedWidth >> 1;
-  m_videoBuffer.iLineSize[3] = 0;
-  if (!m_bDropPictures)
-  {
-    m_videoBuffer.data[0] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[0];
-    m_videoBuffer.data[1] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[1];
-    m_videoBuffer.data[2] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[2];
-  }
-
-  *pDvdVideoPicture = m_videoBuffer;
 
   return true;
 }

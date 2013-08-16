@@ -1103,6 +1103,9 @@ int CDVDPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)
       case RENDER_FMT_NV12:
         formatstr = "NV12";
         break;
+      case RENDER_FMT_NV12MT:
+        formatstr = "NV12MT";
+        break; 
       case RENDER_FMT_UYVY422:
         formatstr = "UYVY";
         break;
@@ -1346,6 +1349,7 @@ void CDVDPlayerVideo::AutoCrop(DVDVideoPicture *pPicture)
 {
   if ((pPicture->format == RENDER_FMT_YUV420P) ||
      (pPicture->format == RENDER_FMT_NV12) ||
+     (pPicture->format == RENDER_FMT_NV12MT) ||
      (pPicture->format == RENDER_FMT_YUYV422) ||
      (pPicture->format == RENDER_FMT_UYVY422))
   {
