@@ -157,6 +157,8 @@ libusb_disabled="== libusb disabled. Plug and play USB device support will not b
 libusb_disabled_udev_found="== libusb disabled. =="
 libcec_enabled="== libcec enabled. =="
 libcec_disabled="== libcec disabled. CEC adapter support will not be available. =="
+mfc_enabled="== mfc enabled. =="
+mfc_disabled="== mfc disabled. =="
 
 # External library message strings
 external_libraries_enabled="== Use of all supported external libraries enabled. =="
@@ -517,6 +519,11 @@ AC_ARG_ENABLE([external-ffmpeg],
   [enable use of external ffmpeg libraries (default is no) 'Linux only'])],
   [use_external_ffmpeg=$enableval],
   [use_external_ffmpeg=$use_external_libraries])
+
+AC_ARG_ENABLE([mfc],
+  [AS_HELP_STRING([--enable-mfc],
+  [enable use of mfc hardware decoder on exynos platform (default is no) 'Linux only'])],
+  [use_mfc=$enableval])
 
 ### End of external library options
 
@@ -1483,6 +1490,11 @@ else
   AC_MSG_NOTICE($libcec_disabled)
 fi
 
+USE_MFCDECODER=0
+if test "x$use_mfc" != "xno"; then
+  USE_MFCDECODER=1;AC_DEFINE(HAVE_MFCDECODER,[1],["Define if MFC samsung exynos decoder is present"])
+fi
+
 # libcap
 if test "$use_libcap" != "no"; then
   AC_CHECK_HEADERS([sys/capability.h],,
@@ -2235,6 +2247,12 @@ else
   final_message="$final_message\n  libcec support:\tNo"
 fi
 
+if test "x$use_mfc" != "xno"; then
+  final_message="$final_message\n  MFC support:\tYes"
+else
+  final_message="$final_message\n  MFC support:\tNo"
+fi
+
 if test "x$use_libmp3lame" != "xno"; then
   final_message="$final_message\n  libmp3lame support:\tYes"
 else
@@ -2430,6 +2448,7 @@ AC_SUBST(USE_ANDROID)
 AC_SUBST(GTEST_CONFIGURED)
 AC_SUBST(USE_DOXYGEN)
 AC_SUBST(USE_PVR_ADDONS)
+AC_SUBST(USE_MFCDECODER)
 
 # pushd and popd are not available in other shells besides bash, so implement
 # our own pushd/popd functions

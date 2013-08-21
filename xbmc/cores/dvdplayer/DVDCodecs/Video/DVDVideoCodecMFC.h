@@ -32,7 +32,7 @@
 #define STREAM_BUFFER_SIZE        512000 //compressed frame size. 1080p mpeg4 10Mb/s can be >256k in size, so this is to make sure frame fits into buffer
 #define FIMC_TO_VIDEO_BUFFERS_CNT 3 //2 begins to be slow. maybe on video only, but not on convert.
 #define MFC_OUTPUT_BUFFERS_CNT    2 //1 doesn't work at all
-#define CAPTURE_EXTRA_BUFFER_CNT  2 //can be 1
+#define CAPTURE_EXTRA_BUFFER_CNT  2 //these are extra buffers, better keep their count as big as going to be simultaneous dequeued buffers number
 
 #define INT_ROUND(x, y) ((x % y) > 0 ? (int(x/y)+1)*y : (int(x/y))*y )
 
@@ -104,7 +104,6 @@ protected:
 
   DVDVideoPicture   m_videoBuffer;
   bool m_bFIMCStartConverter;
-  bool m_bMFCStartDecoder;
 
   bool OpenDevices();
 };
@@ -116,7 +115,7 @@ inline int align(int v, int a) {
 #define err(msg, ...) \
   fprintf(stderr, "Error (%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 #define dbg(msg, ...) \
-//  fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
+ fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 #define msg(msg, ...) \
   fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 
