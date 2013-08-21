@@ -41,7 +41,9 @@ INCLUDES += -I$(prefix)/include/amcodec
 INCLUDES += -I$(prefix)/include/amplayer
 endif
 
+ifeq (@USE_MFCDECODER@,1)
 SRCS += DVDVideoCodecMFC.cpp
+endif
 
 LIB=Video.a
 
