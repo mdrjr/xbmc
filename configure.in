@@ -578,12 +578,14 @@ AC_ARG_ENABLE([libav-compat],
 AC_ARG_ENABLE([exynos4],
   [AS_HELP_STRING([--enable-exynos4],
   [enable use of Exynos4 hardware decoder (default is no) 'Linux only'])],
-  [use_exynos4=$enableval])
+  [use_exynos4=$enableval],
+  [use_exynos4=no])
 
 AC_ARG_ENABLE([exynos5],
   [AS_HELP_STRING([--enable-exynos5],
   [enable use of Exynos5 hardware decoder (default is no) 'Linux only'])],
-  [use_exynos5=$enableval])
+  [use_exynos5=$enableval],
+  [use_exynos5=no])
 
 ### End of external library options
 
