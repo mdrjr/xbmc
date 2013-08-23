@@ -30,8 +30,11 @@
 #if defined(HAVE_VIDEOTOOLBOXDECODER)
 #include "Video/DVDVideoCodecVideoToolBox.h"
 #endif
-#if defined(HAVE_MFCDECODER)
-#include "Video/DVDVideoCodecMFC.h"
+#if defined(HAVE_EXYNOS4)
+#include "Video/DVDVideoCodecExynos4.h"
+#endif
+#if defined(HAVE_EXYNOS5)
+#include "Video/DVDVideoCodecExynos5.h"
 #endif
 #include "Video/DVDVideoCodecFFmpeg.h"
 #include "Video/DVDVideoCodecOpenMax.h"
@@ -172,16 +175,24 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #elif defined(_LINUX) && !defined(TARGET_DARWIN)
   hwSupport += "VAAPI:no ";
 #endif
-#if defined(HAVE_MFCDECODER) && defined(_LINUX)
-  hwSupport += "MFC:yes";
+#if defined(HAVE_EXYNOS4) && defined(_LINUX)
+  hwSupport += "MFCv5:yes";
 #elif defined(_LINUX)
-  hwSupport += "MFC:no";
+  hwSupport += "MFCv5:no";
+#endif
+#if defined(HAVE_EXYNOS5) && defined(_LINUX)
+  hwSupport += "MFCv6:yes";
+#elif defined(_LINUX)
+  hwSupport += "MFCv6:no";
 #endif
 
   CLog::Log(LOGDEBUG, "CDVDFactoryCodec: compiled in hardware support: %s", hwSupport.c_str());
 
-#if defined(HAVE_MFCDECODER) && defined(_LINUX)
-  if( (pCodec = OpenCodec(new CDVDVideoCodecMFC(), hint, options)) ) return pCodec;
+#if defined(HAVE_EXYNOS4) && defined(_LINUX)
+  if( (pCodec = OpenCodec(new CDVDVideoCodecExynos4(), hint, options)) ) return pCodec;
+#endif
+#if defined(HAVE_EXYNOS5) && defined(_LINUX)
+  if( (pCodec = OpenCodec(new CDVDVideoCodecExynos5(), hint, options)) ) return pCodec;
 #endif
 
   // dvd's have weird still-frames in it, which is not fully supported in ffmpeg
