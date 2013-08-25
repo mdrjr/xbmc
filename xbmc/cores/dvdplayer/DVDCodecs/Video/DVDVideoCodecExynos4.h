@@ -115,8 +115,8 @@ inline int align(int v, int a) {
 #define err(msg, ...) \
   fprintf(stderr, "Error (%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 #define dbg(msg, ...) \
- fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
+// fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 #define msg(msg, ...) \
-  fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
+//  fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 
 #define memzero(x) memset(&(x), 0, sizeof (x))
