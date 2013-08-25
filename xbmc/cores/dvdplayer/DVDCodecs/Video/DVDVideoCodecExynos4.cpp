@@ -348,9 +348,19 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
 		return false;
 	}
   msg("\e[1;31mFIMC OUTPUT\e[0m S_CROP %dx%d", crop.c.width, crop.c.height);
+/*
   int width = m_iDecodedWidth;
   int height = m_iDecodedHeight;
-  
+ */
+  RESOLUTION_INFO& res_info = g_settings.m_ResInfo[g_graphicsContext.GetVideoResolution()];
+  double ratio = std::min((double)res_info.iScreenWidth / (double)m_iDecodedWidth, (double)res_info.iScreenHeight / (double)m_iDecodedHeight);
+  int width = (int)((double)m_iDecodedWidth * ratio);
+  int height = (int)((double)m_iDecodedHeight * ratio);
+  if (width%2)
+    width--;
+  if (height%2)
+    height--;
+
   // Request mfc capture buffers
   m_MFCCaptureBuffersCount = CLinuxV4l2::RequestBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_MFCCaptureBuffersCount);
   if (m_MFCCaptureBuffersCount == V4L2_ERROR) {
@@ -615,7 +625,7 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
   dbg("\e[1;32mMFC CAPTURE\e[0m -> %d", ret);
   m_v4l2MFCCaptureBuffers[ret].bQueue = false;
 
-  dbg("MFC time: %d", XbmcThreads::SystemClockMillis() - mtime);
+  msg("MFC time: %d", XbmcThreads::SystemClockMillis() - mtime);
 
   m_index.push(ret);
 
@@ -772,7 +782,7 @@ bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
       dbg("\e[1;32mMFC CAPTURE\e[0m <- %d", ret);
     }
 
-    dbg("FIMC time: %d", XbmcThreads::SystemClockMillis() - ftime);
+    msg("FIMC time: %d", XbmcThreads::SystemClockMillis() - ftime);
 
   } else {
     m_videoBuffer.iFlags        &= DVP_FLAG_ALLOCATED;
