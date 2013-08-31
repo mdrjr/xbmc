@@ -482,8 +482,6 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
     m_v4l2MFCOutputBuffers[ret].bQueue = false;
   }
 
-  msg("Initialization done.");
-
   return true;
 }
 
@@ -531,39 +529,22 @@ void CDVDVideoCodecExynos4::Dispose() {
 }
 
 void CDVDVideoCodecExynos4::SetDropState(bool bDrop) {
+
   m_bDropPictures = bDrop;
 
-  if (m_bDropPictures) {
-    if(!m_index.empty()) {
-      int index = m_index.front();
-
-      msg("Dropping frame with index %d", index);
-      if (&m_v4l2MFCCaptureBuffers[index] && !m_v4l2MFCCaptureBuffers[index].bQueue) {
-        int ret = CLinuxV4l2::QueueBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_v4l2MFCCaptureBuffers[index].iNumPlanes, index, &m_v4l2MFCCaptureBuffers[index]);
-        if (ret < 0)
-          CLog::Log(LOGERROR, "%s::%s - queue output buffer\n", CLASSNAME, __func__);
-        else {
-          m_v4l2MFCCaptureBuffers[index].bQueue = true;
-          dbg("\e[1;32mMFC CAPTURE\e[0m <- %d", ret);
-        }
-      }
-
-      m_index.pop();
-    }
-  }
 }
 
 int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts) {
   int ret = -1;
+  int index = 0;
 
-//  unsigned int mtime = XbmcThreads::SystemClockMillis();
+//  unsigned int dtime = XbmcThreads::SystemClockMillis();
 
   if(pData) {
-    int index = 0;
     int demuxer_bytes = iSize;
     uint8_t *demuxer_content = pData;
 
-    dbg("Frame of size %d", demuxer_bytes);
+    dbg("Frame of size %d, pts = %f, dts = %f", demuxer_bytes, pts, dts);
 
     while (index < m_MFCOutputBuffersCount && m_v4l2MFCOutputBuffers[index].bQueue)
       index++;
@@ -583,8 +564,8 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
         m_v4l2MFCOutputBuffers[index].bQueue = false;
       } else if (ret == V4L2_BUSY) { // buffer is still busy
         err("\e[1;32mMFC OUTPUT\e[0m All buffers are queued and busy, no space for new frame to decode. Very broken situation.");
-	/* FIXME This should be handled as abnormal situation that should be addressed, otherwise decoding will stuck here forever */
-        return VC_ERROR;
+        /* FIXME This should be handled as abnormal situation that should be addressed, otherwise decoding will stuck here forever */
+        return VC_FLUSHED;
       } else {
         err("\e[1;32mMFC OUTPUT\e[0m PollOutput error %d, errno %d", ret, errno);
         return VC_ERROR;
@@ -598,7 +579,7 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
     }
 
     if(demuxer_bytes < m_v4l2MFCOutputBuffers[index].iSize[0]) {
-      m_pts.push(pts);
+      m_pts.push(-pts);
       m_dts.push(dts);
 
       fast_memcpy((uint8_t *)m_v4l2MFCOutputBuffers[index].cPlane[0], demuxer_content, demuxer_bytes);
@@ -616,180 +597,156 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
   }
 
   // Dequeue decoded frame
-  ret = CLinuxV4l2::DequeueBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, V4L2_NUM_MAX_PLANES);
-  if (ret < 0) {
+  index = CLinuxV4l2::DequeueBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, V4L2_NUM_MAX_PLANES);
+  if (index < 0) {
     if (errno == EAGAIN) // Buffer is still busy, queue more
       return VC_BUFFER;
     err("\e[1;32mMFC CAPTURE\e[0m error dequeue output buffer, got number %d, errno %d", ret, errno);
     return VC_ERROR;
   }
-  dbg("\e[1;32mMFC CAPTURE\e[0m -> %d", ret);
-  m_v4l2MFCCaptureBuffers[ret].bQueue = false;
+  dbg("\e[1;32mMFC CAPTURE\e[0m -> %d", index);
+  m_v4l2MFCCaptureBuffers[index].bQueue = false;
 
-//  msg("MFC time: %d", XbmcThreads::SystemClockMillis() - mtime);
-
-  m_index.push(ret);
-
-  return VC_PICTURE; // Queue more, plus the picture is ready to be processed further
-}
-
-void CDVDVideoCodecExynos4::Reset() {
-}
-
-bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
+  if (m_bDropPictures) {
+    m_videoBuffer.iFlags      |= DVP_FLAG_DROPPED;
+    msg("Dropping frame with index %d", index);
+  } else {
 #ifdef USE_FIMC
-  m_videoBuffer.format = RENDER_FMT_YUV420P;
-#else
-  m_videoBuffer.format = RENDER_FMT_NV12MT;
+    if (m_iFIMCdequeuedBufferNumber >= 0 && !m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue) {
+      ret = CLinuxV4l2::QueueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].iNumPlanes, m_iFIMCdequeuedBufferNumber, &m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber]);
+      if (ret == V4L2_ERROR) {
+        err("\e[1;31mFIMC CAPTURE\e[0m Failed to queue buffer with index %d, errno = %d", m_iFIMCdequeuedBufferNumber, errno);
+        return VC_ERROR;
+      }
+      dbg("\e[1;31mFIMC CAPTURE\e[0m %d <-", ret);
+      m_v4l2FIMCCaptureBuffers[ret].bQueue = true;
+      m_iFIMCdequeuedBufferNumber = -1;
+    }
+
+    ret = CLinuxV4l2::QueueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_MEMORY_USERPTR, m_v4l2MFCCaptureBuffers[index].iNumPlanes, index, &m_v4l2MFCCaptureBuffers[index]);
+    if (ret == V4L2_ERROR) {
+      err("\e[1;33mVIDEO\e[0m Failed to queue buffer with index %d, errno %d", ret, errno);
+      return VC_ERROR;
+    }
+    m_v4l2MFCCaptureBuffers[ret].bQueue = true;
+    dbg("\e[1;31mFIMC OUTPUT\e[0m %d <-", ret);
+
+    if (m_bFIMCStartConverter) {
+      if (CLinuxV4l2::StreamOn(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, VIDIOC_STREAMON))
+        dbg("\e[1;31mFIMC OUTPUT\e[0m Stream ON");
+      else
+        err("\e[1;31mFIMC OUTPUT\e[0m Failed to Stream ON");
+      if (CLinuxV4l2::StreamOn(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, VIDIOC_STREAMON))
+        dbg("\e[1;31mFIMC CAPTURE\e[0m Stream ON");
+      else
+        err("\e[1;31mFIMC CAPTURE\e[0m Failed to Stream ON");
+      m_bFIMCStartConverter = false;
+      return VC_BUFFER; //Queue one more frame for double buffering on FIMC
+    }
+
+    ret = CLinuxV4l2::PollOutput(m_iConverterHandle, 1000/25); // 25 fps
+    if (ret == V4L2_ERROR) {
+      err("\e[1;32mMFC OUTPUT\e[0m PollInput Error");
+      return VC_ERROR;
+    } else if (ret == V4L2_READY) {
+      // Dequeue frame from fimc output
+      index = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_MEMORY_USERPTR, V4L2_NUM_MAX_PLANES);
+      if (index < 0) {
+        err("\e[1;31mFIMC OUTPUT\e[0m error dequeue output buffer, got number %d", index);
+        return VC_ERROR;
+      }
+      dbg("\e[1;31mFIMC OUTPUT\e[0m -> %d", index);
+      m_v4l2MFCCaptureBuffers[index].bQueue = false;
+    } else if (ret == V4L2_BUSY) { // buffer is still busy
+      err("\e[1;31mFIMC OUTPUT\e[0m Buffer is still busy");
+      return VC_ERROR;
+    } else {
+      err("\e[1;31mFIMC OUTPUT\e[0m PollOutput error %d, errno %d", ret, errno);
+      return VC_ERROR;
+    }
+
+    m_iFIMCdequeuedBufferNumber = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, V4L2_NUM_MAX_PLANES);
+    if (m_iFIMCdequeuedBufferNumber < 0) {
+      if (errno == EAGAIN) // Dequeue buffer not ready, need more data on input. EAGAIN = 11
+        return VC_BUFFER;
+      err("\e[1;31mFIMC CAPTURE\e[0m error dequeue output buffer, got number %d, errno %d", m_iFIMCdequeuedBufferNumber, errno);
+      return VC_ERROR;
+    }
+    dbg("\e[1;31mFIMC CAPTURE\e[0m -> %d", m_iFIMCdequeuedBufferNumber);
+    m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue = false;
 #endif
 
-//  unsigned int ftime = XbmcThreads::SystemClockMillis();
-  if(m_pts.size()) {
-//    m_videoBuffer.pts = m_pts.front();
-    m_videoBuffer.pts = DVD_NOPTS_VALUE;
-    m_videoBuffer.dts = m_dts.front();
+    m_videoBuffer.iFlags          = DVP_FLAG_ALLOCATED;
+    m_videoBuffer.color_range     = 0;
+    m_videoBuffer.color_matrix    = 4;
 
+    m_videoBuffer.iDisplayWidth   = m_iConvertedWidth;
+    m_videoBuffer.iDisplayHeight  = m_iConvertedHeight;
+    m_videoBuffer.iWidth          = m_iConvertedWidth;
+    m_videoBuffer.iHeight         = m_iConvertedHeight;
+
+    m_videoBuffer.data[0]         = 0;
+    m_videoBuffer.data[1]         = 0;
+    m_videoBuffer.data[2]         = 0;
+    m_videoBuffer.data[3]         = 0;
+    
+#ifdef USE_FIMC
+    m_videoBuffer.format          = RENDER_FMT_YUV420P;
+    m_videoBuffer.iLineSize[0]    = m_iConvertedWidth;
+    m_videoBuffer.iLineSize[1]    = m_iConvertedWidth >> 1;
+    m_videoBuffer.iLineSize[2]    = m_iConvertedWidth >> 1;
+    m_videoBuffer.iLineSize[3]    = 0;
+    m_videoBuffer.data[0]         = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[0];
+    m_videoBuffer.data[1]         = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[1];
+    m_videoBuffer.data[2]         = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[2];
+#else
+    m_videoBuffer.format          = RENDER_FMT_NV12MT;
+    m_videoBuffer.iLineSize[0]    = m_iConvertedWidth;
+    m_videoBuffer.iLineSize[1]    = m_iConvertedWidth;
+    m_videoBuffer.iLineSize[2]    = 0;
+    m_videoBuffer.iLineSize[3]    = 0;
+    m_videoBuffer.data[0]         = (BYTE*)m_v4l2MFCCaptureBuffers[index].cPlane[0];
+    m_videoBuffer.data[1]         = (BYTE*)m_v4l2MFCCaptureBuffers[index].cPlane[1];
+#endif
+  }
+
+  // Pop pts/dts only when picture is finally ready to be showed up or skipped
+  if(m_pts.size()) {
+    m_videoBuffer.pts = -m_pts.top(); // MFC always return frames in order and assigning them their pts'es from the input
+                                      // will lead to reshuffle. This will assign least pts in the queue to the frame dequeued.
+    m_videoBuffer.dts = m_dts.front();
+    
     m_pts.pop();
     m_dts.pop();
   } else {
-    printf("no pts value\n");
+    err("no pts value");
     m_videoBuffer.pts           = DVD_NOPTS_VALUE;
     m_videoBuffer.dts           = DVD_NOPTS_VALUE;
   }
 
-  m_videoBuffer.iFlags        = DVP_FLAG_ALLOCATED;
-
-  if(!m_index.empty()) {
-    int index = m_index.front();
-
-    m_index.pop();
-
-    if (m_bDropPictures) {
+  // Queue dequeued frame back to MFC CAPTURE
+  if (&m_v4l2MFCCaptureBuffers[index] && !m_v4l2MFCCaptureBuffers[index].bQueue) {
+    int ret = CLinuxV4l2::QueueBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_v4l2MFCCaptureBuffers[index].iNumPlanes, index, &m_v4l2MFCCaptureBuffers[index]);
+    if (ret < 0) {
+      CLog::Log(LOGERROR, "%s::%s - queue output buffer\n", CLASSNAME, __func__);
       m_videoBuffer.iFlags      |= DVP_FLAG_DROPPED;
-      msg("Dropping frame with index %d", index);
-    } else {
-#ifdef USE_FIMC
-      int ret = 0;
-      if (m_iFIMCdequeuedBufferNumber >= 0 && !m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue) {
-        ret = CLinuxV4l2::QueueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].iNumPlanes, m_iFIMCdequeuedBufferNumber, &m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber]);
-        if (ret == V4L2_ERROR) {
-          err("\e[1;31mFIMC CAPTURE\e[0m Failed to queue buffer with index %d, errno = %d", m_iFIMCdequeuedBufferNumber, errno);
-          return false;
-        }
-        dbg("\e[1;31mFIMC CAPTURE\e[0m %d <-", ret);
-        m_v4l2FIMCCaptureBuffers[ret].bQueue = true;
-        m_iFIMCdequeuedBufferNumber = -1;
-      }
-
-      ret = CLinuxV4l2::QueueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_MEMORY_USERPTR, m_v4l2MFCCaptureBuffers[index].iNumPlanes, index, &m_v4l2MFCCaptureBuffers[index]);
-      if (ret == V4L2_ERROR) {
-        err("\e[1;33mVIDEO\e[0m Failed to queue buffer with index %d, errno %d", ret, errno);
-        return false;
-      }
-      m_v4l2MFCCaptureBuffers[ret].bQueue = true;
-      dbg("\e[1;31mFIMC OUTPUT\e[0m %d <-", ret);
-
-      if (m_bFIMCStartConverter) {
-        if (CLinuxV4l2::StreamOn(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, VIDIOC_STREAMON))
-          dbg("\e[1;31mFIMC OUTPUT\e[0m Stream ON");
-        else
-          err("\e[1;31mFIMC OUTPUT\e[0m Failed to Stream ON");
-        if (CLinuxV4l2::StreamOn(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, VIDIOC_STREAMON))
-          dbg("\e[1;31mFIMC CAPTURE\e[0m Stream ON");
-        else
-          err("\e[1;31mFIMC CAPTURE\e[0m Failed to Stream ON");
-        m_bFIMCStartConverter = false;
-        return false;
-      }
-
-      ret = CLinuxV4l2::PollOutput(m_iConverterHandle, 1000/25); // 25 fps
-      if (ret == V4L2_ERROR) {
-        err("\e[1;32mMFC OUTPUT\e[0m PollInput Error");
-        return false;
-      } else if (ret == V4L2_READY) {
-        // Dequeue frame from fimc output
-        index = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_MEMORY_USERPTR, V4L2_NUM_MAX_PLANES);
-        if (index < 0) {
-          err("\e[1;31mFIMC OUTPUT\e[0m error dequeue output buffer, got number %d", index);
-          return false;
-        }
-        dbg("\e[1;31mFIMC OUTPUT\e[0m -> %d", index);
-        m_v4l2MFCCaptureBuffers[index].bQueue = false;
-      } else if (ret == V4L2_BUSY) { // buffer is still busy
-        return false;
-      } else {
-        err("\e[1;31mFIMC OUTPUT\e[0m PollOutput error %d, errno %d", ret, errno);
-        return false;
-      }
-
-      m_iFIMCdequeuedBufferNumber = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, V4L2_NUM_MAX_PLANES);
-      if (m_iFIMCdequeuedBufferNumber < 0) {
-        if (errno == EAGAIN) // Dequeue buffer not ready, need more data on input. EAGAIN = 11
-          return false;
-        err("\e[1;31mFIMC CAPTURE\e[0m error dequeue output buffer, got number %d, errno %d", m_iFIMCdequeuedBufferNumber, errno);
-        return false;
-      }
-      dbg("\e[1;31mFIMC CAPTURE\e[0m -> %d", m_iFIMCdequeuedBufferNumber);
-      m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue = false;
-#endif
-      //m_videoBuffer.iFlags          |= m_bDropPictures ? DVP_FLAG_DROPPED : 0;
-
-      m_videoBuffer.color_range     = 0;
-      m_videoBuffer.color_matrix    = 4;
-
-      m_videoBuffer.iDisplayWidth   = m_iConvertedWidth;
-      m_videoBuffer.iDisplayHeight  = m_iConvertedHeight;
-      m_videoBuffer.iWidth          = m_iConvertedWidth;
-      m_videoBuffer.iHeight         = m_iConvertedHeight;
-
-      m_videoBuffer.data[0] = 0;
-      m_videoBuffer.data[1] = 0;
-      m_videoBuffer.data[2] = 0;
-      m_videoBuffer.data[3] = 0;
-#ifdef USE_FIMC
-      m_videoBuffer.iLineSize[0] = m_iConvertedWidth;
-      m_videoBuffer.iLineSize[1] = m_iConvertedWidth >> 1;
-      m_videoBuffer.iLineSize[2] = m_iConvertedWidth >> 1;
-      m_videoBuffer.iLineSize[3] = 0;
-      if (!m_bDropPictures)
-      {
-        m_videoBuffer.data[0] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[0];
-        m_videoBuffer.data[1] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[1];
-        m_videoBuffer.data[2] = (BYTE*)m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].cPlane[2];
-      }
-#else
-      m_videoBuffer.iLineSize[0] = m_iConvertedWidth;
-      m_videoBuffer.iLineSize[1] = m_iConvertedWidth;
-      m_videoBuffer.iLineSize[2] = 0;
-      m_videoBuffer.iLineSize[3] = 0;
-      if (!m_bDropPictures)
-      {
-        m_videoBuffer.data[0] = (BYTE*)m_v4l2MFCCaptureBuffers[index].cPlane[0];
-        m_videoBuffer.data[1] = (BYTE*)m_v4l2MFCCaptureBuffers[index].cPlane[1];
-      }
-#endif
+      m_videoBuffer.iFlags      &= DVP_FLAG_ALLOCATED;
+      return VC_ERROR;
     }
-
-    // Queue dequeued frame back to MFC CAPTURE
-    if (&m_v4l2MFCCaptureBuffers[index] && !m_v4l2MFCCaptureBuffers[index].bQueue) {
-      int ret = CLinuxV4l2::QueueBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_v4l2MFCCaptureBuffers[index].iNumPlanes, index, &m_v4l2MFCCaptureBuffers[index]);
-      if (ret < 0) {
-        CLog::Log(LOGERROR, "%s::%s - queue output buffer\n", CLASSNAME, __func__);
-        m_videoBuffer.iFlags      |= DVP_FLAG_DROPPED;
-        m_videoBuffer.iFlags      &= DVP_FLAG_ALLOCATED;
-        return false;
-      }
-      m_v4l2MFCCaptureBuffers[index].bQueue = true;
-      dbg("\e[1;32mMFC CAPTURE\e[0m <- %d", ret);
-    }
-
-//    msg("FIMC time: %d", XbmcThreads::SystemClockMillis() - ftime);
-
-  } else {
-    m_videoBuffer.iFlags        &= DVP_FLAG_ALLOCATED;
-    m_videoBuffer.iFlags        |= DVP_FLAG_DROPPED;
-    msg("Queue empty");
+    m_v4l2MFCCaptureBuffers[index].bQueue = true;
+    dbg("\e[1;32mMFC CAPTURE\e[0m <- %d", ret);
   }
+
+//  msg("Decode time: %d", XbmcThreads::SystemClockMillis() - dtime);
+  
+  return VC_PICTURE; // Picture is finally ready to be processed further
+}
+
+void CDVDVideoCodecExynos4::Reset() {
+
+}
+
+bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
 
   *pDvdVideoPicture = m_videoBuffer;
 
