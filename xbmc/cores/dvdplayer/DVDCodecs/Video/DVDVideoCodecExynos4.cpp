@@ -556,7 +556,7 @@ void CDVDVideoCodecExynos4::SetDropState(bool bDrop) {
 int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts) {
   int ret = -1;
 
-  unsigned int mtime = XbmcThreads::SystemClockMillis();
+//  unsigned int mtime = XbmcThreads::SystemClockMillis();
 
   if(pData) {
     int index = 0;
@@ -626,7 +626,7 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
   dbg("\e[1;32mMFC CAPTURE\e[0m -> %d", ret);
   m_v4l2MFCCaptureBuffers[ret].bQueue = false;
 
-  msg("MFC time: %d", XbmcThreads::SystemClockMillis() - mtime);
+//  msg("MFC time: %d", XbmcThreads::SystemClockMillis() - mtime);
 
   m_index.push(ret);
 
@@ -643,10 +643,10 @@ bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
   m_videoBuffer.format = RENDER_FMT_NV12MT;
 #endif
 
-  unsigned int ftime = XbmcThreads::SystemClockMillis();
-  
+//  unsigned int ftime = XbmcThreads::SystemClockMillis();
   if(m_pts.size()) {
-    m_videoBuffer.pts = m_pts.front();
+//    m_videoBuffer.pts = m_pts.front();
+    m_videoBuffer.pts = DVD_NOPTS_VALUE;
     m_videoBuffer.dts = m_dts.front();
 
     m_pts.pop();
@@ -783,7 +783,7 @@ bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
       dbg("\e[1;32mMFC CAPTURE\e[0m <- %d", ret);
     }
 
-    msg("FIMC time: %d", XbmcThreads::SystemClockMillis() - ftime);
+//    msg("FIMC time: %d", XbmcThreads::SystemClockMillis() - ftime);
 
   } else {
     m_videoBuffer.iFlags        &= DVP_FLAG_ALLOCATED;
