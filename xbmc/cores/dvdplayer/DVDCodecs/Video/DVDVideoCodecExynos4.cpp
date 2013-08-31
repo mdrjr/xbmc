@@ -144,7 +144,7 @@ bool CDVDVideoCodecExynos4::OpenDevices() {
           if (m_iDecoderHandle < 0)
             close(fd);
         }
-        if (m_iConverterHandle < 0 && strncmp(drivername, "fimc", 4) == 0) {
+        if (m_iConverterHandle < 0 && strstr(drivername, "fimc") != NULL && strstr(drivername, "m2m") != NULL) {
           struct v4l2_capability cap;
           int fd = open(devname, O_RDWR, 0);
           if (fd > 0) {
@@ -489,11 +489,11 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
 
 void CDVDVideoCodecExynos4::Dispose() {
   msg("MUnmapping buffers");
-  if (sizeof(m_v4l2MFCOutputBuffers) > 0)
+  if (m_v4l2MFCOutputBuffers)
     m_v4l2MFCOutputBuffers = CLinuxV4l2::FreeBuffers(m_MFCOutputBuffersCount, m_v4l2MFCOutputBuffers);
-  if (sizeof(m_v4l2MFCCaptureBuffers) > 0)
+  if (m_v4l2MFCCaptureBuffers)
     m_v4l2MFCCaptureBuffers = CLinuxV4l2::FreeBuffers(m_MFCCaptureBuffersCount, m_v4l2MFCCaptureBuffers);
-  if (sizeof(m_v4l2FIMCCaptureBuffers) > 0)
+  if (m_v4l2FIMCCaptureBuffers)
     m_v4l2FIMCCaptureBuffers = CLinuxV4l2::FreeBuffers(m_FIMCCaptureBuffersCount, m_v4l2FIMCCaptureBuffers);
   msg("Devices cleanup");
   if (CLinuxV4l2::StreamOn(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, VIDIOC_STREAMOFF))
@@ -583,6 +583,7 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
         m_v4l2MFCOutputBuffers[index].bQueue = false;
       } else if (ret == V4L2_BUSY) { // buffer is still busy
         err("\e[1;32mMFC OUTPUT\e[0m All buffers are queued and busy, no space for new frame to decode. Very broken situation.");
+	/* FIXME This should be handled as abnormal situation that should be addressed, otherwise decoding will stuck here forever */
         return VC_ERROR;
       } else {
         err("\e[1;32mMFC OUTPUT\e[0m PollOutput error %d, errno %d", ret, errno);
@@ -629,7 +630,7 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
 
   m_index.push(ret);
 
-  return VC_BUFFER | VC_PICTURE; // Queue more, plus the picture is ready to be processed further
+  return VC_PICTURE; // Queue more, plus the picture is ready to be processed further
 }
 
 void CDVDVideoCodecExynos4::Reset() {
@@ -673,7 +674,7 @@ bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
         ret = CLinuxV4l2::QueueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].iNumPlanes, m_iFIMCdequeuedBufferNumber, &m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber]);
         if (ret == V4L2_ERROR) {
           err("\e[1;31mFIMC CAPTURE\e[0m Failed to queue buffer with index %d, errno = %d", m_iFIMCdequeuedBufferNumber, errno);
-          return VC_ERROR;
+          return false;
         }
         dbg("\e[1;31mFIMC CAPTURE\e[0m %d <-", ret);
         m_v4l2FIMCCaptureBuffers[ret].bQueue = true;
@@ -683,7 +684,7 @@ bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
       ret = CLinuxV4l2::QueueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_MEMORY_USERPTR, m_v4l2MFCCaptureBuffers[index].iNumPlanes, index, &m_v4l2MFCCaptureBuffers[index]);
       if (ret == V4L2_ERROR) {
         err("\e[1;33mVIDEO\e[0m Failed to queue buffer with index %d, errno %d", ret, errno);
-        return VC_ERROR;
+        return false;
       }
       m_v4l2MFCCaptureBuffers[ret].bQueue = true;
       dbg("\e[1;31mFIMC OUTPUT\e[0m %d <-", ret);
@@ -698,35 +699,35 @@ bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
         else
           err("\e[1;31mFIMC CAPTURE\e[0m Failed to Stream ON");
         m_bFIMCStartConverter = false;
-        return VC_BUFFER;
+        return false;
       }
 
       ret = CLinuxV4l2::PollOutput(m_iConverterHandle, 1000/25); // 25 fps
       if (ret == V4L2_ERROR) {
         err("\e[1;32mMFC OUTPUT\e[0m PollInput Error");
-        return VC_ERROR;
+        return false;
       } else if (ret == V4L2_READY) {
         // Dequeue frame from fimc output
         index = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, V4L2_MEMORY_USERPTR, V4L2_NUM_MAX_PLANES);
         if (index < 0) {
           err("\e[1;31mFIMC OUTPUT\e[0m error dequeue output buffer, got number %d", index);
-          return VC_ERROR;
+          return false;
         }
         dbg("\e[1;31mFIMC OUTPUT\e[0m -> %d", index);
         m_v4l2MFCCaptureBuffers[index].bQueue = false;
       } else if (ret == V4L2_BUSY) { // buffer is still busy
-        return VC_BUFFER;
+        return false;
       } else {
         err("\e[1;31mFIMC OUTPUT\e[0m PollOutput error %d, errno %d", ret, errno);
-        return VC_ERROR;
+        return false;
       }
 
       m_iFIMCdequeuedBufferNumber = CLinuxV4l2::DequeueBuffer(m_iConverterHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, V4L2_NUM_MAX_PLANES);
       if (m_iFIMCdequeuedBufferNumber < 0) {
         if (errno == EAGAIN) // Dequeue buffer not ready, need more data on input. EAGAIN = 11
-          return VC_BUFFER;
+          return false;
         err("\e[1;31mFIMC CAPTURE\e[0m error dequeue output buffer, got number %d, errno %d", m_iFIMCdequeuedBufferNumber, errno);
-        return VC_ERROR;
+        return false;
       }
       dbg("\e[1;31mFIMC CAPTURE\e[0m -> %d", m_iFIMCdequeuedBufferNumber);
       m_v4l2FIMCCaptureBuffers[m_iFIMCdequeuedBufferNumber].bQueue = false;
@@ -776,7 +777,7 @@ bool CDVDVideoCodecExynos4::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
         CLog::Log(LOGERROR, "%s::%s - queue output buffer\n", CLASSNAME, __func__);
         m_videoBuffer.iFlags      |= DVP_FLAG_DROPPED;
         m_videoBuffer.iFlags      &= DVP_FLAG_ALLOCATED;
-        return VC_ERROR;
+        return false;
       }
       m_v4l2MFCCaptureBuffers[index].bQueue = true;
       dbg("\e[1;32mMFC CAPTURE\e[0m <- %d", ret);
