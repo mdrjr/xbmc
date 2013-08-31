@@ -98,7 +98,7 @@ protected:
 
   CBitstreamConverter m_converter;
 
-  std::queue<double> m_pts;
+  std::priority_queue<double> m_pts;
   std::queue<double> m_dts;
   std::queue<int> m_index;
 
@@ -119,6 +119,6 @@ inline int align(int v, int a) {
 #define dbg(msg, ...) \
 // fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 #define msg(msg, ...) \
-//  fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
+  fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 
 #define memzero(x) memset(&(x), 0, sizeof (x))
