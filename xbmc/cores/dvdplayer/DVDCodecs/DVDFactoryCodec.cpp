@@ -210,7 +210,7 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
   if( (pCodec = OpenCodec(new CDVDVideoCodecExynos5(), hint, options)) ) return pCodec;
 #endif
 
-i#if !defined(HAS_LIBAMCODEC)
+#if !defined(HAS_LIBAMCODEC)
   // dvd's have weird still-frames in it, which is not fully supported in ffmpeg
   if(hint.stills && (hint.codec == AV_CODEC_ID_MPEG2VIDEO || hint.codec == AV_CODEC_ID_MPEG1VIDEO))
   {

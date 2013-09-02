@@ -1067,6 +1067,7 @@ int CDVDPlayerVideo::OutputPicture(const DVDVideoPicture* src, double pts)
           |  GetFlagsColorPrimaries(pPicture->color_primaries)
           |  GetFlagsColorTransfer(pPicture->color_transfer);
 
+    CStdString formatstr = GetRenderFormatName(pPicture->format);
 
     if(m_bAllowFullscreen)
     {

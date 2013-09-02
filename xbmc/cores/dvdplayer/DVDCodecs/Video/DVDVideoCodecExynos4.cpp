@@ -29,7 +29,7 @@
 #include "DVDCodecs/DVDCodecs.h"
 #include "DVDCodecs/DVDCodecUtils.h"
 
-#include "settings/GUISettings.h"
+//#include "settings/GUISettings.h"
 #include "settings/Settings.h"
 #include "utils/fastmemcpy.h"
 
@@ -348,10 +348,10 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
 		return false;
 	}
   msg("\e[1;31mFIMC OUTPUT\e[0m S_CROP %dx%d", crop.c.width, crop.c.height);
-/*
+
   int width = m_iDecodedWidth;
   int height = m_iDecodedHeight;
- */
+/*// TODO: check if scaling is OK in Gotham
   RESOLUTION_INFO& res_info = g_settings.m_ResInfo[g_graphicsContext.GetVideoResolution()];
   double ratio = std::min((double)res_info.iScreenWidth / (double)m_iDecodedWidth, (double)res_info.iScreenHeight / (double)m_iDecodedHeight);
   int width = (int)((double)m_iDecodedWidth * ratio);
@@ -360,7 +360,7 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
     width--;
   if (height%2)
     height--;
-
+*/
   // Request mfc capture buffers
   m_MFCCaptureBuffersCount = CLinuxV4l2::RequestBuffer(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, m_MFCCaptureBuffersCount);
   if (m_MFCCaptureBuffersCount == V4L2_ERROR) {
