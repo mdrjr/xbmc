@@ -85,7 +85,7 @@
 #include "cores/AudioEngine/Utils/AEUtil.h"
 #include "cores/VideoRenderers/BaseRenderer.h"
 
-#if defined(TARGET_DARWIN)
+#if defined(TARGET_DARWIN_OSX)
 #include "osx/smc.h"
 #include "linux/LinuxResourceCounter.h"
 static CLinuxResourceCounter m_resourceCounter;
@@ -4015,9 +4015,9 @@ string CGUIInfoManager::GetSystemHeatInfo(int info)
       text.Format("%i%%", m_fanSpeed * 2);
       break;
     case SYSTEM_CPU_USAGE:
-#if defined(TARGET_DARWIN)
+#if defined(TARGET_DARWIN_OSX)
       text.Format("%4.2f%%", m_resourceCounter.GetCPUUsage());
-#elif defined(TARGET_WINDOWS)
+#elif defined(TARGET_DARWIN) || defined(TARGET_WINDOWS)
       text.Format("%d%%", g_cpuInfo.getUsedPercentage());
 #else
       text.Format("%s", g_cpuInfo.GetCoresUsageString());
@@ -4032,7 +4032,7 @@ CTemperature CGUIInfoManager::GetGPUTemperature()
   int  value = 0;
   char scale = 0;
 
-#if defined(TARGET_DARWIN)
+#if defined(TARGET_DARWIN_OSX)
   value = SMCGetTemperature(SMC_KEY_GPU_TEMP);
   return CTemperature::CreateFromCelsius(value);
 #else
@@ -4578,7 +4578,7 @@ CStdString CGUIInfoManager::GetItemLabel(const CFileItem *item, int info, CStdSt
     {
       CStdString path;
       if (item->IsMusicDb() && item->HasMusicInfoTag())
-        URIUtils::GetDirectory(item->GetMusicInfoTag()->GetURL(), path);
+        path = URIUtils::GetDirectory(item->GetMusicInfoTag()->GetURL());
       else if (item->IsVideoDb() && item->HasVideoInfoTag())
       {
         if( item->m_bIsFolder )
@@ -5095,8 +5095,7 @@ CStdString CGUIInfoManager::GetPictureLabel(int info)
     return GetItemLabel(m_currentSlide, LISTITEM_FILENAME);
   else if (info == SLIDE_FILE_PATH)
   {
-    CStdString path;
-    URIUtils::GetDirectory(m_currentSlide->GetPath(), path);
+    CStdString path = URIUtils::GetDirectory(m_currentSlide->GetPath());
     return CURL(path).GetWithoutUserDetails();
   }
   else if (info == SLIDE_FILE_SIZE)
