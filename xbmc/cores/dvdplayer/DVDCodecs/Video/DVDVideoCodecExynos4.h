@@ -30,9 +30,9 @@
 #include "guilib/GraphicContext.h"
 
 #define STREAM_BUFFER_SIZE        786432 //compressed frame size. 1080p mpeg4 10Mb/s can be un to 786k in size, so this is to make sure frame fits into buffer
-#define FIMC_TO_VIDEO_BUFFERS_CNT 3 //2 begins to be slow. maybe on video only, but not on convert.
-#define MFC_OUTPUT_BUFFERS_CNT    2 //1 doesn't work at all
-#define CAPTURE_EXTRA_BUFFER_CNT  3//these are extra buffers, better keep their count as big as going to be simultaneous dequeued buffers number
+#define FIMC_TO_VIDEO_BUFFERS_CNT 3  //2 begins to be slow. maybe on video only, but not on convert.
+#define MFC_OUTPUT_BUFFERS_CNT    12 //1 doesn't work at all
+#define CAPTURE_EXTRA_BUFFER_CNT  3  //these are extra buffers, better keep their count as big as going to be simultaneous dequeued buffers number
 
 #ifndef V4L2_CAP_VIDEO_M2M_MPLANE
   #define V4L2_CAP_VIDEO_M2M_MPLANE       0x00004000
