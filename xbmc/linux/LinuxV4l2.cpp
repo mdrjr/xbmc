@@ -195,7 +195,7 @@ int CLinuxV4l2::DequeueBuffer(int device, enum v4l2_buf_type type, enum v4l2_mem
 
   ret = ioctl(device, VIDIOC_DQBUF, &vbuf);
   if (ret) {
-    if (ret != EAGAIN)
+    if (errno != EAGAIN)
       CLog::Log(LOGERROR, "%s::%s - Dequeue buffer", CLASSNAME, __func__);
     return V4L2_ERROR;
   }
