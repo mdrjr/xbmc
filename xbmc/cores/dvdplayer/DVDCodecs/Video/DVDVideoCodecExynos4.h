@@ -29,10 +29,10 @@
 #include <list>
 #include "guilib/GraphicContext.h"
 
-#define STREAM_BUFFER_SIZE        786432 //compressed frame size. 1080p mpeg4 10Mb/s can be un to 786k in size, so this is to make sure frame fits into buffer
-#define FIMC_TO_VIDEO_BUFFERS_CNT 3 //2 begins to be slow. maybe on video only, but not on convert.
-#define MFC_OUTPUT_BUFFERS_CNT    2 //1 doesn't work at all
-#define CAPTURE_EXTRA_BUFFER_CNT  3//these are extra buffers, better keep their count as big as going to be simultaneous dequeued buffers number
+#define STREAM_BUFFER_SIZE            786432 //compressed frame size. 1080p mpeg4 10Mb/s can be un to 786k in size, so this is to make sure frame fits into buffer
+#define FIMC_CAPTURE_BUFFERS_CNT      3 //2 begins to be slow.
+#define MFC_OUTPUT_BUFFERS_CNT        2 //1 doesn't work at all
+#define MFC_CAPTURE_EXTRA_BUFFER_CNT  3 //these are extra buffers, better keep their count as big as going to be simultaneous dequeued buffers number
 
 #ifndef V4L2_CAP_VIDEO_M2M_MPLANE
   #define V4L2_CAP_VIDEO_M2M_MPLANE       0x00004000
@@ -41,12 +41,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef struct MFCBuffer 
-{
-  int index;
-  V4L2Buffer m_v4l2Buffer;
-} MFCBuffer;
 
 #ifdef __cplusplus
 }
@@ -100,7 +94,6 @@ protected:
 
   std::priority_queue<double> m_pts;
   std::queue<double> m_dts;
-  std::queue<int> m_index;
 
   bool m_bDropPictures;
 
@@ -109,16 +102,5 @@ protected:
 
   bool OpenDevices();
 };
-
-inline int align(int v, int a) {
-  return ((v + a - 1) / a) * a;
-}
-
-#define err(msg, ...) \
-  fprintf(stderr, "Error (%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
-#define dbg(msg, ...) \
-// fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
-#define msg(msg, ...) \
-  fprintf(stdout, "(%s:%s:%d): " msg "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__)
 
 #define memzero(x) memset(&(x), 0, sizeof (x))
