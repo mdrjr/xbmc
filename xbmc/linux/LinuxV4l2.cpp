@@ -65,7 +65,7 @@ int CLinuxV4l2::RequestBuffer(int device, enum v4l2_buf_type type, enum v4l2_mem
   ret = ioctl(device, VIDIOC_REQBUFS, &reqbuf);
   if (ret)
   {
-    CLog::Log(LOGERROR, "%s::%s - request buffers\n", CLASSNAME, __func__);
+    CLog::Log(LOGERROR, "%s::%s - Request buffers", CLASSNAME, __func__);
     return V4L2_ERROR;
   }
 
@@ -110,7 +110,7 @@ bool CLinuxV4l2::MmapBuffers(int device, int count, V4L2Buffer *v4l2Buffers, enu
     ret = ioctl(device, VIDIOC_QUERYBUF, &buf);
     if (ret)
     {
-      CLog::Log(LOGERROR, "%s::%s - query output buffer\n", CLASSNAME, __func__);
+      CLog::Log(LOGERROR, "%s::%s - Query buffer", CLASSNAME, __func__);
       return false;
     }
 
@@ -129,7 +129,7 @@ bool CLinuxV4l2::MmapBuffers(int device, int count, V4L2Buffer *v4l2Buffers, enu
                        MAP_SHARED, device, buf.m.planes[j].m.mem_offset);
         if(buffer->cPlane[j] == MAP_FAILED)
         {
-          CLog::Log(LOGERROR, "%s::%s - mapping output buffer\n", CLASSNAME, __func__);
+          CLog::Log(LOGERROR, "%s::%s - Mmapping buffer", CLASSNAME, __func__);
           return false;
         }
         memset(buffer->cPlane[j], 0, buf.m.planes[j].length);
@@ -143,7 +143,7 @@ bool CLinuxV4l2::MmapBuffers(int device, int count, V4L2Buffer *v4l2Buffers, enu
       ret = ioctl(device, VIDIOC_QBUF, &buf);
       if (ret)
       {
-        CLog::Log(LOGERROR, "%s::%s - queue output buffer\n", CLASSNAME, __func__);
+        CLog::Log(LOGERROR, "%s::%s - Queue buffer", CLASSNAME, __func__);
         return false;
       }
       buffer->bQueue = true;
@@ -168,7 +168,7 @@ V4L2Buffer *CLinuxV4l2::FreeBuffers(int count, V4L2Buffer *v4l2Buffers)
         if(buffer->cPlane[j] && buffer->cPlane[j] != MAP_FAILED)
         {
           munmap(buffer->cPlane[j], buffer->iSize[j]);
-          CLog::Log(LOGDEBUG, "%s::%s - unmap convert buffer\n", CLASSNAME, __func__);
+          CLog::Log(LOGDEBUG, "%s::%s - unmap convert buffer", CLASSNAME, __func__);
         }
       }
     }
@@ -195,7 +195,8 @@ int CLinuxV4l2::DequeueBuffer(int device, enum v4l2_buf_type type, enum v4l2_mem
 
   ret = ioctl(device, VIDIOC_DQBUF, &vbuf);
   if (ret) {
-    CLog::Log(LOGERROR, "%s::%s - dequeue input buffer\n", CLASSNAME, __func__);
+    if (ret != EAGAIN)
+      CLog::Log(LOGERROR, "%s::%s - Dequeue buffer", CLASSNAME, __func__);
     return V4L2_ERROR;
   }
   
@@ -230,7 +231,7 @@ int CLinuxV4l2::QueueBuffer(int device, enum v4l2_buf_type type,
   ret = ioctl(device, VIDIOC_QBUF, &vbuf);
   if (ret)
   {
-    CLog::Log(LOGERROR, "%s::%s - queue input buffer\n", CLASSNAME, __func__);
+    CLog::Log(LOGERROR, "%s::%s - Queue buffer", CLASSNAME, __func__);
     return V4L2_ERROR;
   }
   buffer->bQueue = true;
@@ -248,7 +249,7 @@ int CLinuxV4l2::PollInput(int device, int timeout)
   ret = poll(&p, 1, timeout);
   if (ret < 0)
   {
-    CLog::Log(LOGERROR, "%s::%s - polling input\n", CLASSNAME, __func__);
+    CLog::Log(LOGERROR, "%s::%s - Polling input", CLASSNAME, __func__);
     return V4L2_ERROR;
   }
   else if (ret == 0)
@@ -269,7 +270,7 @@ int CLinuxV4l2::PollOutput(int device, int timeout)
   ret = poll(&p, 1, timeout);
   if (ret < 0)
   {
-    CLog::Log(LOGERROR, "%s::%s - polling output\n", CLASSNAME, __func__);
+    CLog::Log(LOGERROR, "%s::%s - Polling output", CLASSNAME, __func__);
     return V4L2_ERROR;
   }
   else if (ret == 0)
@@ -292,7 +293,7 @@ int CLinuxV4l2::SetControllValue(int device, int id, int value)
 
   if(ret < 0) 
   {
-    CLog::Log(LOGERROR, "%s::%s - set controll if %d value %d\n", CLASSNAME, __func__, id, value);
+    CLog::Log(LOGERROR, "%s::%s - Set controll if %d value %d\n", CLASSNAME, __func__, id, value);
     return V4L2_ERROR;
   }
 
