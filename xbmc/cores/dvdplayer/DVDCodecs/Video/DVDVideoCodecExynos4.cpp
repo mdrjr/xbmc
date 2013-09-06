@@ -29,8 +29,15 @@
 #include "DVDCodecs/DVDCodecs.h"
 #include "DVDCodecs/DVDCodecUtils.h"
 
-#include "settings/GUISettings.h"
+#define MAJOR_VERSION 12
+
 #include "settings/Settings.h"
+#if MAJOR_VERSION < 13
+	#include "settings/GUISettings.h"
+#else
+	#include "settings/DisplaySettings.h"
+	#include "settings/AdvancedSettings.h"
+#endif
 #include "utils/fastmemcpy.h"
 
 #include <linux/LinuxV4l2.h>
@@ -354,7 +361,11 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
   CLog::Log(LOGDEBUG, "%s::%s - FIMC OUTPUT S_CROP (%dx%d)", CLASSNAME, __func__, crop.c.width, crop.c.height);
 
   // Calculate FIMC final picture size be scaled to fit screen
+#if MAJOR_VERSION < 13
   RESOLUTION_INFO& res_info = g_settings.m_ResInfo[g_graphicsContext.GetVideoResolution()];
+#else
+  RESOLUTION_INFO res_info =  CDisplaySettings::Get().GetResolutionInfo(g_graphicsContext.GetVideoResolution());
+#endif
   double ratio = std::min((double)res_info.iScreenWidth / (double)m_iDecodedWidth, (double)res_info.iScreenHeight / (double)m_iDecodedHeight);
   int width = (int)((double)m_iDecodedWidth * ratio);
   int height = (int)((double)m_iDecodedHeight * ratio);
