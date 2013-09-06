@@ -182,6 +182,9 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
   struct v4l2_crop crop;
   int ret = 0;
 
+  if (hints.software)
+    return false;
+
   Dispose();
 
   if (!OpenDevices()) {
