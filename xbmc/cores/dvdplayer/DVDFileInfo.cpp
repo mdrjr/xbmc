@@ -161,21 +161,18 @@ bool CDVDFileInfo::ExtractThumb(const CStdString &strPath, CTextureDetails &deta
 
     CDVDStreamInfo hint(*pDemuxer->GetStream(nVideoStream), true);
     hint.software = true;
-/*
+
     if (hint.codec == CODEC_ID_MPEG2VIDEO || hint.codec == CODEC_ID_MPEG1VIDEO)
     {
       // libmpeg2 is not thread safe so use ffmepg for mpeg2/mpeg1 thumb extraction
-*/
-      // Use ffmpeg for any thumbinal generation
       CDVDCodecOptions dvdOptions;
       pVideoCodec = CDVDFactoryCodec::OpenCodec(new CDVDVideoCodecFFmpeg(), hint, dvdOptions);
-/*
     }
     else
     {
       pVideoCodec = CDVDFactoryCodec::CreateVideoCodec( hint );
     }
-*/
+
     if (pVideoCodec)
     {
       int nTotalLen = pDemuxer->GetStreamLength();
