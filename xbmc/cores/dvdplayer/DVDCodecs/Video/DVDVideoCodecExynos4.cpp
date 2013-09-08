@@ -144,7 +144,7 @@ bool CDVDVideoCodecExynos4::OpenDevices() {
                 ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) && (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE))) &&
                 (cap.capabilities & V4L2_CAP_STREAMING)) {
                 m_iDecoderHandle = fd;
-                CLog::Log(LOGNOTICE, "%s::%s - Found %s %s", CLASSNAME, __func__, drivername, devname);
+                CLog::Log(LOGDEBUG, "%s::%s - Found %s %s", CLASSNAME, __func__, drivername, devname);
               }
           }
           if (m_iDecoderHandle < 0)
@@ -161,7 +161,7 @@ bool CDVDVideoCodecExynos4::OpenDevices() {
                 ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) && (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE))) &&
                 (cap.capabilities & V4L2_CAP_STREAMING)) {
                 m_iConverterHandle = fd;
-                CLog::Log(LOGNOTICE, "%s::%s - Found %s %s", CLASSNAME, __func__, drivername, devname);
+                CLog::Log(LOGDEBUG, "%s::%s - Found %s %s", CLASSNAME, __func__, drivername, devname);
               }
           }
           if (m_iConverterHandle < 0)
@@ -508,7 +508,7 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
   CLog::Log(LOGDEBUG, "%s::%s - MFC OUTPUT -> %d header", CLASSNAME, __func__, ret);
 
   CLog::Log(LOGNOTICE, "%s::%s - MFC Setup succesfull, start streaming", CLASSNAME, __func__);
-  printf("%s::%s - MFC Setup succesfull, start streaming", CLASSNAME, __func__);
+  printf("%s::%s - MFC Setup succesfull, start streaming\n", CLASSNAME, __func__);
   
   return true;
 }
