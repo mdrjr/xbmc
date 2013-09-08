@@ -392,17 +392,22 @@ void CUtil::GetHomePath(CStdString& strPath, const CStdString& strTarget)
   strPath = CEnvironment::getenv(strTarget);
 
 #ifdef TARGET_WINDOWS
-  if (!strPath.IsEmpty())
+  if (strPath.find("..") != std::string::npos)
   {
     //expand potential relative path to full path
     CStdStringW strPathW;
     g_charsetConverter.utf8ToW(strPath, strPathW, false);
-    const int bufSize = GetFullPathNameW(strPathW, 0, NULL, NULL);
-    if (bufSize > 0)
+    CWIN32Util::AddExtraLongPathPrefix(strPathW);
+    const unsigned int bufSize = GetFullPathNameW(strPathW, 0, NULL, NULL);
+    if (bufSize != 0)
     {
       wchar_t * buf = new wchar_t[bufSize];
-      if (GetFullPathNameW(strPathW, bufSize, buf, NULL) == bufSize-1)
-        g_charsetConverter.wToUTF8(buf, strPath);
+      if (GetFullPathNameW(strPathW, bufSize, buf, NULL) <= bufSize-1)
+      {
+        std::wstring expandedPathW(buf);
+        CWIN32Util::RemoveExtraLongPathPrefix(expandedPathW);
+        g_charsetConverter.wToUTF8(expandedPathW, strPath);
+      }
 
       delete [] buf;
     }
