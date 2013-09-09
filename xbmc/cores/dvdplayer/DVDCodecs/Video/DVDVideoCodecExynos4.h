@@ -93,7 +93,7 @@ protected:
   CBitstreamConverter m_converter;
 
   std::priority_queue<double> m_pts;
-  std::queue<double> m_dts;
+  std::priority_queue<double> m_dts;
 
   bool m_bDropPictures;
 

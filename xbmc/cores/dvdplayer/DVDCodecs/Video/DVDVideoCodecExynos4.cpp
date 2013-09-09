@@ -607,7 +607,7 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
 
     if(demuxer_bytes < m_v4l2MFCOutputBuffers[index].iSize[0]) {
       m_pts.push(-pts);
-      m_dts.push(dts);
+      m_dts.push(-dts);
 
       fast_memcpy((uint8_t *)m_v4l2MFCOutputBuffers[index].cPlane[0], demuxer_content, demuxer_bytes);
       m_v4l2MFCOutputBuffers[index].iBytesUsed[0] = demuxer_bytes;
@@ -741,7 +741,7 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
   if(m_pts.size()) {
     m_videoBuffer.pts = -m_pts.top(); // MFC always return frames in order and assigning them their pts'es from the input
                                       // will lead to reshuffle. This will assign least pts in the queue to the frame dequeued.
-    m_videoBuffer.dts = m_dts.front();
+    m_videoBuffer.dts = -m_dts.top();
     
     m_pts.pop();
     m_dts.pop();
