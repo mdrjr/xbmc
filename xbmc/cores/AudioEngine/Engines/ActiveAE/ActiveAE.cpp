@@ -458,12 +458,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           par = (MsgStreamParameter*)msg->data;
           if (par->stream->m_resampleBuffers)
           {
-            if ((unsigned int)(par->stream->m_resampleBuffers->m_format.m_sampleRate * par->parameter.double_par) != par->stream->m_resampleBuffers->m_outSampleRate)
-            {
-              par->stream->m_resampleBuffers->m_resampleRatio = par->parameter.double_par;
-              par->stream->m_resampleBuffers->m_resampleQuality = AE_QUALITY_LOW;
-              par->stream->m_resampleBuffers->m_changeResampler = true;
-            }
+            par->stream->m_resampleBuffers->m_resampleRatio = par->parameter.double_par;
           }
           return;
         case CActiveAEControlProtocol::STREAMFADE:
@@ -1247,9 +1242,15 @@ void CActiveAE::ApplySettingsToFormat(AEAudioFormat &format, AudioSettings &sett
   else
   {
     format.m_dataFormat = AE_FMT_FLOAT;
+    // consider user channel layout for those cases
+    // 1. input stream is multichannel
+    // 2. stereo upmix is selected
+    // 3. already playing > 2 channels and "audiophile" is not set
+    //    this is the case if e.g. a stream changes config from 5.1 to 2.0
+    //    which would cause a short audio drop-out if we changed the sink
     if ((format.m_channelLayout.Count() > 2) ||
          settings.stereoupmix ||
-         !g_advancedSettings.m_audioAudiophile)
+         (m_stats.GetWaterLevel() > 0 && m_internalFormat.m_channelLayout.Count() > 2 && !g_advancedSettings.m_audioAudiophile))
     {
       CAEChannelInfo stdLayout;
       switch (settings.channels)
@@ -2333,7 +2334,8 @@ bool CActiveAE::ResampleSound(CActiveAESound *sound)
   }
   int samples = resampler->Resample(dst_buffer, dst_samples,
                                     sound->GetSound(true)->data,
-                                    sound->GetSound(true)->nb_samples);
+                                    sound->GetSound(true)->nb_samples,
+                                    1.0);
 
   sound->GetSound(false)->nb_samples = samples;
 
