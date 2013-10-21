@@ -17,7 +17,6 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
-
 #include "system.h"
 
 #ifdef HAS_EGL
@@ -271,7 +270,7 @@ bool CEGLWrapper::CreateSurface(EGLDisplay display, EGLConfig config, EGLSurface
   EGLNativeWindowType *nativeWindow=NULL;
   if (!m_nativeTypes->GetNativeWindow((XBNativeWindowType**)&nativeWindow))
     return false;
-
+  
   *surface = eglCreateWindowSurface(display, config, *nativeWindow, NULL);
   CheckError();
   return *surface != EGL_NO_SURFACE;
@@ -386,7 +385,7 @@ void CEGLWrapper::SwapBuffers(EGLDisplay display, EGLSurface surface)
 
 #if defined(TARGET_HYBRIS)
   if (m_nativeTypes)
-    m_nativeTypes->ShowWindow(show);
+    m_nativeTypes->ShowWindow(true);
 #endif
 }
 
