@@ -388,6 +388,7 @@ bool CEGLWrapper::SetVSync(EGLDisplay display, bool enable)
   EGLBoolean status;
   // depending how buffers are setup, eglSwapInterval
   // might fail so let caller decide if this is an error.
+  enable = true;
   status = eglSwapInterval(display, enable ? 1 : 0);
   CheckError();
   return status;
@@ -400,8 +401,11 @@ void CEGLWrapper::SwapBuffers(EGLDisplay display, EGLSurface surface)
   eglSwapBuffers(display, surface);
 
 #if defined(TARGET_HYBRIS)
-  if (m_nativeTypes)
-    m_nativeTypes->ShowWindow(true);
+  if (m_nativeTypes) {
+    CEGLNativeTypeHybris *hybris = dynamic_cast<CEGLNativeTypeHybris *>(m_nativeTypes);
+    if (hybris)
+      hybris->SwapSurface();
+  }
 #endif
 }
 
