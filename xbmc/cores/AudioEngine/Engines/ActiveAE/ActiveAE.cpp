@@ -1049,6 +1049,7 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
     {
       (*it)->SetConverted(false);
     }
+    m_sounds_playing.clear();
   }
 
   ClearDiscardedBuffers();
@@ -1731,7 +1732,7 @@ bool CActiveAE::RunStages()
 #else
                 for (int k = 0; k < nb_floats; ++k)
                 {
-                  dst[k] += src[k] * m_muted ? 0.0 : volume;
+                  dst[k] += src[k] * (m_muted ? 0.0 : volume);
                   if (fabs(dst[k]) > 1.0f)
                     needClamp = true;
                 }
@@ -1809,14 +1810,9 @@ bool CActiveAE::RunStages()
               break;
             else
             {
-              int submitted = 0;
               int samples;
-              while(submitted < buf->pkt->nb_samples)
-              {
-                samples = std::min(512, buf->pkt->nb_samples-submitted);
-                m_audioCallback->OnAudioData((float*)(buf->pkt->data[0]+2*submitted), samples);
-                submitted += samples;
-              }
+              samples = std::min(512, buf->pkt->nb_samples);
+              m_audioCallback->OnAudioData((float*)(buf->pkt->data[0]), samples);
               buf->Return();
               m_vizBuffers->m_outputSamples.pop_front();
             }
@@ -1952,7 +1948,7 @@ void CActiveAE::Deamplify(CSoundPacket &dstSample)
       CAEUtil::SSEMulArray(buffer, m_muted ? 0.0 : m_volume, nb_floats);
 #else
       float *fbuffer = buffer;
-      for (unsigned int i = 0; i < nb_floats; i++)
+      for (int i = 0; i < nb_floats; i++)
         *fbuffer++ *= m_volume;
 #endif
     }

@@ -53,6 +53,11 @@ int CRegExp::m_JitSupported  = -1;
 
 CRegExp::CRegExp(bool caseless /*= false*/, bool utf8 /*= false*/)
 {
+  InitValues(caseless, utf8);
+}
+
+void CRegExp::InitValues(bool caseless /*= false*/, bool utf8 /*= false*/)
+{
   m_re          = NULL;
   m_sd          = NULL;
   m_iOptions    = PCRE_DOTALL | PCRE_NEWLINE_ANY;
@@ -73,6 +78,12 @@ CRegExp::CRegExp(bool caseless /*= false*/, bool utf8 /*= false*/)
   m_jitStack    = NULL;
 
   memset(m_iOvector, 0, sizeof(m_iOvector));
+}
+
+CRegExp::CRegExp(bool caseless, bool utf8, const char *re, studyMode study /*= NoStudy*/)
+{
+  InitValues(caseless, utf8);
+  RegComp(re, study);
 }
 
 CRegExp::CRegExp(const CRegExp& re)
@@ -454,7 +465,7 @@ bool CRegExp::LogCheckUtf8Support(void)
   {
     CLog::Log(LOGNOTICE, "Consider installing PCRE lib version 8.10 or later with enabled Unicode properties and UTF-8 support. Your PCRE lib version: %s", PCRE::pcre_version());
 #if PCRE_UCP == 0
-    CLog::Log(LOGNOTICE, "You will need to rebuild XBMC after PCRE lib update.", PCRE::pcre_version());
+    CLog::Log(LOGNOTICE, "You will need to rebuild XBMC after PCRE lib update.");
 #endif
   }
 
