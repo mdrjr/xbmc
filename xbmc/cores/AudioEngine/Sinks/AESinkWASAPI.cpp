@@ -192,6 +192,7 @@ CAESinkWASAPI::CAESinkWASAPI() :
   m_uiBufferLen(0),
   m_avgTimeWaiting(50),
   m_sinkLatency(0.0),
+  m_lastWriteToBuffer(0),
   m_pBuffer(NULL),
   m_bufferPtr(0)
 {
@@ -231,7 +232,7 @@ bool CAESinkWASAPI::Initialize(AEAudioFormat &format, std::string &device)
   hr = pEnumDevices->GetCount(&uiCount);
   EXIT_ON_FAILURE(hr, __FUNCTION__": Retrieval of audio endpoint count failed.")
 
-  if(StringUtils::EndsWith(device, std::string("default")))
+  if(StringUtils::EndsWithNoCase(device, std::string("default")))
     bdefault = true;
 
   if(!bdefault)

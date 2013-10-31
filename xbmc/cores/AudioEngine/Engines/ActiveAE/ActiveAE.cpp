@@ -322,7 +322,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
         {
         case CActiveAEControlProtocol::INIT:
           m_extError = false;
-          m_sink.EnumerateSinkList();
+          m_sink.EnumerateSinkList(false);
           LoadSettings();
           Configure();
           msg->Reply(CActiveAEControlProtocol::ACC);
@@ -589,7 +589,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           m_extError = false;
           if (!displayReset)
           {
-            m_sink.EnumerateSinkList();
+            m_sink.EnumerateSinkList(true);
             LoadSettings();
           }
           Configure();
@@ -607,6 +607,22 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           }
           m_stats.SetSuspended(false);
           m_extDeferData = false;
+          return;
+        default:
+          break;
+        }
+      }
+      else if (&m_sink.m_dataPort)
+      {
+        switch (signal)
+        {
+        case CSinkDataProtocol::RETURNSAMPLE:
+          CSampleBuffer **buffer;
+          buffer = (CSampleBuffer**)msg->data;
+          if (buffer)
+          {
+            (*buffer)->Return();
+          }
           return;
         default:
           break;
@@ -981,6 +997,7 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
       if (!(*it)->m_resampleBuffers)
       {
         (*it)->m_resampleBuffers = new CActiveAEBufferPoolResample((*it)->m_inputBuffers->m_format, outputFormat, m_settings.resampleQuality);
+        (*it)->m_resampleBuffers->m_changeResampler = (*it)->m_forceResampler;
         (*it)->m_resampleBuffers->Create(MAX_CACHE_LEVEL*1000, false, m_settings.stereoupmix);
       }
       if (m_mode == MODE_TRANSCODE || m_streams.size() > 1)
@@ -1041,10 +1058,20 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
 CActiveAEStream* CActiveAE::CreateStream(MsgStreamNew *streamMsg)
 {
   // we only can handle a single pass through stream
-  if (!m_streams.empty())
+  bool hasRawStream = false;
+  bool hasStream = false;
+  std::list<CActiveAEStream*>::iterator it;
+  for(it = m_streams.begin(); it != m_streams.end(); ++it)
   {
-    if (AE_IS_RAW(m_streams.front()->m_format.m_dataFormat) || AE_IS_RAW(streamMsg->format.m_dataFormat))
-      return NULL;
+    if((*it)->IsDrained())
+      continue;
+    if(AE_IS_RAW((*it)->m_format.m_dataFormat))
+      hasRawStream = true;
+    hasStream = true;
+  }
+  if (hasRawStream || (hasStream && AE_IS_RAW(streamMsg->format.m_dataFormat)))
+  {
+    return NULL;
   }
 
   // create the stream
@@ -1062,6 +1089,9 @@ CActiveAEStream* CActiveAE::CreateStream(MsgStreamNew *streamMsg)
 
   if (streamMsg->options & AESTREAM_PAUSED)
     stream->m_paused = true;
+
+  if (streamMsg->options & AESTREAM_FORCE_RESAMPLE)
+    stream->m_forceResampler = true;
 
   m_streams.push_back(stream);
 
@@ -1288,6 +1318,12 @@ void CActiveAE::ApplySettingsToFormat(AEAudioFormat &format, AudioSettings &sett
 
     // for IEC958 limit to 2 channels
     if (m_settings.mode == AUDIO_IEC958)
+    {
+      format.m_channelLayout = AE_CH_LAYOUT_2_0;
+    }
+
+    // sinks may not support mono
+    if (format.m_channelLayout.Count() == 1)
     {
       format.m_channelLayout = AE_CH_LAYOUT_2_0;
     }
@@ -1551,6 +1587,7 @@ bool CActiveAE::RunStages()
           allStreamsReady = false;
       }
 
+      bool needClamp = false;
       for (it = m_streams.begin(); it != m_streams.end() && allStreamsReady; ++it)
       {
         if ((*it)->m_paused || !(*it)->m_resampleBuffers)
@@ -1618,7 +1655,9 @@ bool CActiveAE::RunStages()
 #else
                 float* fbuffer = (float*) out->pkt->data[j]+i*nb_floats;
                 for (int k = 0; k < nb_floats; ++k)
-                  *fbuffer++ *= m_muted ? 0.0 : volume;
+                {
+                  fbuffer[k] *= m_muted ? 0.0 : volume;
+                }
 #endif
               }
             }
@@ -1681,15 +1720,37 @@ bool CActiveAE::RunStages()
                 float *src = (float*)mix->pkt->data[j]+i*nb_floats;
 #ifdef __SSE__
                 CAEUtil::SSEMulAddArray(dst, src, m_muted ? 0.0 : volume, nb_floats);
+                for (int k = 0; k < nb_floats; ++k)
+                {
+                  if (fabs(dst[k]) > 1.0f)
+                  {
+                    needClamp = true;
+                    break;
+                  }
+                }
 #else
                 for (int k = 0; k < nb_floats; ++k)
-                  *dst++ += *src++ * m_muted ? 0.0 : volume;
+                {
+                  dst[k] += src[k] * m_muted ? 0.0 : volume;
+                  if (fabs(dst[k]) > 1.0f)
+                    needClamp = true;
+                }
 #endif
               }
             }
             mix->Return();
           }
           busy = true;
+        }
+      }// for
+
+      // finally clamp samples
+      if(out && needClamp)
+      {
+        int nb_floats = out->pkt->nb_samples * out->pkt->config.channels / out->pkt->planes;
+        for(int i=0; i<out->pkt->planes; i++)
+        {
+          CAEUtil::ClampArray((float*)out->pkt->data[i], nb_floats);
         }
       }
 
@@ -2148,7 +2209,10 @@ IAESound *CActiveAE::MakeSound(const std::string& file)
 
   sound = new CActiveAESound(file);
   if (!sound->Prepare())
+  {
+    delete sound;
     return NULL;
+  }
   int fileSize = sound->GetFileSize();
 
   fmt_ctx = m_dllAvFormat.avformat_alloc_context();
