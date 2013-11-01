@@ -46,6 +46,7 @@ SRCS += DVDVideoCodecExynos4.cpp
 endif
 ifeq (@USE_EXYNOS5@,1)
 SRCS += DVDVideoCodecExynos5.cpp
+endif
 ifeq (@USE_ANDROID@,1)
 SRCS += DVDVideoCodecAndroidMediaCodec.cpp
 endif
