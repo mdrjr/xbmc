@@ -696,6 +696,8 @@ case $use_platform in
      ARCH="arm"
      AC_SUBST(ARCH_DEFINES, "-DTARGET_POSIX -DTARGET_LINUX -D_LINUX -DTARGET_HYBRIS")
      AC_DEFINE(HAS_EGLGLES, [1], [Define if supporting EGL based GLES Framebuffer])
+     AC_DEFINE(HAS_HYBRIS, [1], [Define if supporting Hybris based systems])
+     USE_HYBRIS=1
      CFLAGS="$CFLAGS"
      CXXFLAGS="$CXXFLAGS"
      PKG_CHECK_MODULES([HWCOMPOSEREGL],  [hwcomposer-egl >= 0.1],
@@ -1497,9 +1499,9 @@ if test "x$use_libcec" != "xno"; then
   # libcec is dyloaded, so we need to check for its headers and link any depends.
   if test "x$use_libcec" != "xno"; then
     if test "x$use_libcec" != "xauto"; then
-      PKG_CHECK_MODULES([CEC],[libcec >= 2.1.0],,[use_libcec="no";AC_MSG_ERROR($libcec_disabled)])
+      PKG_CHECK_MODULES([CEC],[libcec >= 1.6.0],,[use_libcec="no";AC_MSG_ERROR($libcec_disabled)])
     else
-      PKG_CHECK_MODULES([CEC],[libcec >= 2.1.0],,[use_libcec="no";AC_MSG_RESULT($libcec_disabled)])
+      PKG_CHECK_MODULES([CEC],[libcec >= 1.6.0],,[use_libcec="no";AC_MSG_RESULT($libcec_disabled)])
     fi
 
     if test "x$use_libcec" != "xno"; then
@@ -2488,6 +2490,7 @@ AC_SUBST(USE_DOXYGEN)
 AC_SUBST(USE_PVR_ADDONS)
 AC_SUBST(USE_EXYNOS4)
 AC_SUBST(USE_EXYNOS5)
+AC_SUBST(USE_HYBRIS)
 
 # pushd and popd are not available in other shells besides bash, so implement
 # our own pushd/popd functions
