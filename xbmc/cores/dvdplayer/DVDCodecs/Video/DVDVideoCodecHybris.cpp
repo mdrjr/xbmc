@@ -29,7 +29,7 @@
 #include "DVDCodecs/DVDCodecs.h"
 #include "DVDCodecs/DVDCodecUtils.h"
 
-#define MAJOR_VERSION 12
+#define MAJOR_VERSION 13
 
 #include "settings/Settings.h"
 #if MAJOR_VERSION < 13

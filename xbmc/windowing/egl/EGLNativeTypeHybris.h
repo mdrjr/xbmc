@@ -20,6 +20,8 @@
  *
  */
 
+#define TARGET_HYBRIS 1
+
 #if defined(TARGET_HYBRIS)
 #include <hwcomposerwindow/hwcomposer_window.h>
 #include <hardware/hardware.h>
