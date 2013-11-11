@@ -242,22 +242,22 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
   }
 #endif
 
-#if defined(TARGET_HYBRIS)
-  if (!hint.software )
-  {
-    if (hint.codec == CODEC_ID_H264 || hint.codec == CODEC_ID_MPEG2VIDEO || hint.codec == CODEC_ID_VC1)
-    { 
-      if ( (pCodec = OpenCodec(new CDVDVideoCodecHybris(), hint, options)) ) return pCodec;
-    } 
-  } 
-#endif
-
 #if defined(HAVE_EXYNOS4) && defined(_LINUX)
   if( (pCodec = OpenCodec(new CDVDVideoCodecExynos4(), hint, options)) ) return pCodec;
 #endif
 
 #if defined(HAVE_EXYNOS5) && defined(_LINUX)
   if( (pCodec = OpenCodec(new CDVDVideoCodecExynos5(), hint, options)) ) return pCodec;
+#endif
+
+#if defined(TARGET_HYBRIS)
+  if (!hint.software )
+  {
+    if (hint.codec == CODEC_ID_H264 || hint.codec == CODEC_ID_MPEG2VIDEO || hint.codec == CODEC_ID_VC1)
+    {
+      if ( (pCodec = OpenCodec(new CDVDVideoCodecHybris(), hint, options)) ) return pCodec;
+    }
+  }
 #endif
 
 #if defined(HAVE_VIDEOTOOLBOXDECODER)
