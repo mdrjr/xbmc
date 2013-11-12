@@ -49,7 +49,6 @@
 #include "guilib/StereoscopicsManager.h"
 #include "Application.h"
 #include "ApplicationMessenger.h"
-#include "DVDPerformanceCounter.h"
 #include "filesystem/File.h"
 #include "pictures/Picture.h"
 #include "DllSwScale.h"
@@ -500,7 +499,8 @@ CDVDPlayer::CDVDPlayer(IPlayerCallback& callback)
       m_dvdPlayerAudio(&m_clock, m_messenger),
       m_dvdPlayerSubtitle(&m_overlayContainer),
       m_dvdPlayerTeletext(),
-      m_ready(true)
+      m_ready(true),
+      m_DemuxerPausePending(false)
 {
   m_pDemuxer = NULL;
   m_pSubtitleDemuxer = NULL;
@@ -641,7 +641,6 @@ void CDVDPlayer::OnStartup()
 
   m_messenger.Init();
 
-  g_dvdPerformanceCounter.EnableMainPerformance(this);
   CUtil::ClearTempFonts();
 }
 
@@ -1200,6 +1199,12 @@ void CDVDPlayer::Process()
     if ((!m_dvdPlayerAudio.AcceptsData() && m_CurrentAudio.id >= 0) ||
         (!m_dvdPlayerVideo.AcceptsData() && m_CurrentVideo.id >= 0))
     {
+      if(m_pDemuxer && m_DemuxerPausePending)
+      {
+        m_DemuxerPausePending = false;
+        m_pDemuxer->SetSpeed(DVD_PLAYSPEED_PAUSE);
+      }
+
       Sleep(10);
       continue;
     }
@@ -2032,8 +2037,6 @@ void CDVDPlayer::SendPlayerMessage(CDVDMsg* pMsg, unsigned int target)
 
 void CDVDPlayer::OnExit()
 {
-  g_dvdPerformanceCounter.DisableMainPerformance();
-
   try
   {
     CLog::Log(LOGNOTICE, "CDVDPlayer::OnExit()");
@@ -2331,10 +2334,14 @@ void CDVDPlayer::HandleMessages()
         m_dvdPlayerAudio.SetSpeed(speed);
         m_dvdPlayerVideo.SetSpeed(speed);
 
-        // TODO - we really shouldn't pause demuxer
-        //        until our buffers are somewhat filled
+        // We can't pause demuxer until our buffers are full. Doing so will result in continued
+        // calls to Read() which may then block indefinitely (CDVDInputStreamRTMP for example).
         if(m_pDemuxer)
-          m_pDemuxer->SetSpeed(speed);
+        {
+          m_DemuxerPausePending = (speed == DVD_PLAYSPEED_PAUSE);
+          if (!m_DemuxerPausePending)
+            m_pDemuxer->SetSpeed(speed);
+        }
       }
       else if (pMsg->IsType(CDVDMsg::PLAYER_CHANNEL_SELECT_NUMBER) && m_messenger.GetPacketCount(CDVDMsg::PLAYER_CHANNEL_SELECT_NUMBER) == 0)
       {
