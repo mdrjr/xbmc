@@ -32,8 +32,8 @@
 #include "guilib/GUIImage.h"
 #include "settings/MediaSettings.h"
 #include "settings/Settings.h"
-#include "settings/SettingsManager.h"
 #include "settings/VideoSettings.h"
+#include "settings/lib/Setting.h"
 #include "utils/JobManager.h"
 #include "utils/LangCodeExpander.h"
 #include "utils/log.h"
@@ -400,8 +400,7 @@ void CGUIDialogSubtitles::OnDownloadComplete(const CFileItemList *items, const s
 
   // construct subtitle path
   URIUtils::RemoveExtension(strFileName);
-  CStdString strSubName;
-  strSubName.Format("%s.%s%s", strFileName.c_str(), strSubLang.c_str(), strSubExt.c_str());
+  CStdString strSubName = StringUtils::Format("%s.%s%s", strFileName.c_str(), strSubLang.c_str(), strSubExt.c_str());
   CStdString strSubPath = URIUtils::AddFileToFolder(strDestPath, strSubName);
 
   // and copy the file across
