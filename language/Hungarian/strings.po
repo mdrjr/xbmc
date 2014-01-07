@@ -3543,11 +3543,11 @@ msgstr "Kiegészítő böngésző"
 
 msgctxt "#10041"
 msgid "Reset above settings to default"
-msgstr "Fenti beállítások nullázása"
+msgstr "Alapértelmezett beállítások visszaállítása"
 
 msgctxt "#10042"
 msgid "Are you sure you want to reset the settings in this category?"
-msgstr "Biztosan nullázni akarja a kategória beállításait?"
+msgstr "Biztosan visszaállítja a kategória beállításait?"
 
 msgctxt "#10043"
 msgid "Help"
@@ -3559,7 +3559,7 @@ msgstr "Nem áll rendelkezésre súgó"
 
 msgctxt "#10045"
 msgid "Resets all the visible settings to their default values."
-msgstr "Az összes látható beállítás alapértelmezettre visszaállítása."
+msgstr "Az összes látható beállítás visszaállítása alapértelmezettre."
 
 msgctxt "#10046"
 msgid "No categories available"
@@ -5477,6 +5477,14 @@ msgctxt "#14100"
 msgid "Stop ripping CD"
 msgstr "CD bemásolás megszakítása"
 
+msgctxt "#15012"
+msgid "Unavailable source"
+msgstr "Nem elérhető forrás"
+
+msgctxt "#15014"
+msgid "Keep"
+msgstr "Megtart"
+
 msgctxt "#15015"
 msgid "Remove"
 msgstr "Törlés"
@@ -5901,6 +5909,10 @@ msgctxt "#16325"
 msgid "VDPAU - Bob"
 msgstr "VDPAU - Bob"
 
+msgctxt "#16326"
+msgid "DXVA-HD"
+msgstr "DXVA-HD"
+
 msgctxt "#16400"
 msgid "Post-processing"
 msgstr "Videó minőségjavítás (post processing)"
@@ -6196,6 +6208,10 @@ msgstr "Ez a felvétel nem törölhető. Nézd meg a naplót a részletekért."
 msgctxt "#19069"
 msgid "EPG"
 msgstr "EPG"
+
+msgctxt "#19070"
+msgid "Go to now"
+msgstr "Ugrás a jelenre"
 
 msgctxt "#19071"
 msgid "EPG update interval"
@@ -10189,6 +10205,22 @@ msgctxt "#24115"
 msgid "Save subtitles to movie folder"
 msgstr "Feliratok mentése a film mappába"
 
+msgctxt "#24116"
+msgid "Default TV Service"
+msgstr "Alapértelmezett TV Szolgáltatás"
+
+msgctxt "#24117"
+msgid "Select service that will be used as default to search for TV Show subtitles"
+msgstr "Alapértelmezett szolgáltatás kiválasztása a Sorozat felirat kereséshez"
+
+msgctxt "#24118"
+msgid "Default Movie Service"
+msgstr "Alapértelmezett Film Szolgáltatás"
+
+msgctxt "#24119"
+msgid "Select service that will be used as default to search for Movie subtitles"
+msgstr "Alapértelmezett szolgáltatás kiválasztása a Film felirat kereséshez"
+
 msgctxt "#25000"
 msgid "Notifications"
 msgstr "Értesítések"
@@ -11843,7 +11875,7 @@ msgstr "Nincs még információ"
 
 msgctxt "#36323"
 msgid "Enable the UPnP server. This will allow you to stream media to any UPnP client."
-msgstr "UPnP szerver engedélyezése. Ez lehetővé teszi az anyagok sugárzását bármely UPnP kliens részére."
+msgstr "UPnP szerver engedélyezése. Ez lehetővé teszi műsorok sugárzását bármely UPnP kliens részére."
 
 msgctxt "#36324"
 msgid "When a manual or automatical library update occurs, notify UPnP clients."
@@ -11855,7 +11887,7 @@ msgstr "Nincs még információ"
 
 msgctxt "#36326"
 msgid "Enable the UPnP client. This will allow you to stream media from any UPnP server with a control point and control playback from that server."
-msgstr "UPnP kliens engedélyezése. Ez lehetővé teszi bármely UPnP szerverről a lejátszást, és a lejátszás vezérlését a kiválasztott szerverről."
+msgstr "UPnP kliens engedélyezése. Ez lehetővé teszi bármely UPnP kiszolgálóról a lejátszást, és a lejátszás vezérlését."
 
 msgctxt "#36327"
 msgid "No info available yet."
@@ -12380,6 +12412,14 @@ msgstr "A párbeszédek hangosítása a a háttérhez képest mikor többcsatorn
 msgctxt "#36544"
 msgid "Enable hardware decoding of video files."
 msgstr "Videófájlok hardveres dekódolásának engedélyezése."
+
+msgctxt "#36545"
+msgid "Subtitle stereoscopic depth"
+msgstr "Felirat 3D mélység"
+
+msgctxt "#36546"
+msgid "Sets the visual depth of subtitles for stereoscopic videos. The higher the value, the closer the subtitles will appear to the viewer."
+msgstr "Beállítja a feliratok 3D videóknál látható térbeli mélységét. Minél magasabb az érték, a felirat annál közelebbinek fog látszani a nézőhöz."
 
 msgctxt "#37000"
 msgid "(Visually Impaired)"

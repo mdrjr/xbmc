@@ -21,10 +21,10 @@
 
 #include "DllAvUtil.h"
 #include "DllSwResample.h"
-#include "Utils/AEChannelInfo.h"
-#include "Utils/AEAudioFormat.h"
-#include "ActiveAEBuffer.h"
-#include "Interfaces/AE.h"
+#include "cores/AudioEngine/Utils/AEChannelInfo.h"
+#include "cores/AudioEngine/Utils/AEAudioFormat.h"
+#include "cores/AudioEngine/Engines/ActiveAE/ActiveAEBuffer.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
 
 namespace ActiveAE
 {
@@ -51,6 +51,7 @@ public:
 protected:
   DllAvUtil m_dllAvUtil;
   DllSwResample m_dllSwResample;
+  bool m_loaded;
   uint64_t m_src_chan_layout, m_dst_chan_layout;
   int m_src_rate, m_dst_rate;
   int m_src_channels, m_dst_channels;

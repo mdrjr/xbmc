@@ -19,8 +19,8 @@
  *
  */
 
-#include "Interfaces/AESink.h"
-#include "Utils/AEDeviceInfo.h"
+#include "cores/AudioEngine/Interfaces/AESink.h"
+#include "cores/AudioEngine/Utils/AEDeviceInfo.h"
 #include <stdint.h>
 
 #include "threads/CriticalSection.h"
@@ -35,11 +35,9 @@ public:
 
   virtual bool Initialize  (AEAudioFormat &format, std::string &device);
   virtual void Deinitialize();
-  virtual bool IsCompatible(const AEAudioFormat &format, const std::string &device);
 
   virtual void         Stop            ();
   virtual double       GetDelay        ();
-  virtual double       GetCacheTime    () { return 0.0; } /* FIXME */
   virtual double       GetCacheTotal   () { return 0.0; } /* FIXME */
   virtual unsigned int AddPackets      (uint8_t *data, unsigned int frames, bool hasAudio, bool blocking = false);
   virtual void         Drain           ();

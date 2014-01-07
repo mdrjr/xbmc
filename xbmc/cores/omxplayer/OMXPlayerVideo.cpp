@@ -95,12 +95,12 @@ OMXPlayerVideo::OMXPlayerVideo(OMXClock *av_clock,
   m_messageQueue.SetMaxDataSize((small_mem ? 10:40) * 1024 * 1024);
   m_messageQueue.SetMaxTimeSize(8.0);
 
+  m_src_rect.SetRect(0, 0, 0, 0);
   m_dst_rect.SetRect(0, 0, 0, 0);
   m_started = false;
   m_iCurrentPts = DVD_NOPTS_VALUE;
   m_nextOverlay = DVD_NOPTS_VALUE;
   m_flush = false;
-  m_view_mode = 0;
   m_history_valid_pts = 0;
 }
 
@@ -118,6 +118,7 @@ bool OMXPlayerVideo::OpenStream(CDVDStreamInfo &hints)
   m_stalled     = m_messageQueue.GetPacketCount(CDVDMsg::DEMUXER_PACKET) == 0;
   m_nextOverlay = DVD_NOPTS_VALUE;
   // force SetVideoRect to be called initially
+  m_src_rect.SetRect(0, 0, 0, 0);
   m_dst_rect.SetRect(0, 0, 0, 0);
 
   if (!m_DllBcmHost.Load())
@@ -233,7 +234,7 @@ void OMXPlayerVideo::ProcessOverlays(double pts)
   VecOverlaysIter it = pVecOverlays->begin();
 
   //Check all overlays and render those that should be rendered, based on time and forced
-  //Both forced and subs should check timeing, pts == 0 in the stillframe case
+  //Both forced and subs should check timing
   while (it != pVecOverlays->end())
   {
     CDVDOverlay* pOverlay = *it++;
@@ -242,7 +243,7 @@ void OMXPlayerVideo::ProcessOverlays(double pts)
 
     double pts2 = pOverlay->bForced ? pts : pts - m_iSubtitleDelay;
 
-    if((pOverlay->iPTSStartTime <= pts2 && (pOverlay->iPTSStopTime > pts2 || pOverlay->iPTSStopTime == 0LL)) || pts == 0)
+    if((pOverlay->iPTSStartTime <= pts2 && (pOverlay->iPTSStopTime > pts2 || pOverlay->iPTSStopTime == 0LL)))
     {
       if(pOverlay->IsOverlayType(DVDOVERLAY_TYPE_GROUP))
         overlays.insert(overlays.end(), static_cast<CDVDOverlayGroup*>(pOverlay)->m_overlays.begin()
@@ -298,9 +299,6 @@ void OMXPlayerVideo::Output(double pts, bool bDropPacket)
 
   double subtitle_pts = m_nextOverlay;
   double time = subtitle_pts != DVD_NOPTS_VALUE ? subtitle_pts - media_pts : 0.0;
-
-  if (m_nextOverlay != DVD_NOPTS_VALUE)
-    media_pts = m_nextOverlay;
 
   m_nextOverlay = NextOverlay(media_pts);
 
@@ -644,18 +642,37 @@ int OMXPlayerVideo::GetFreeSpace()
   return m_omxVideo.GetFreeSpace();
 }
 
-void OMXPlayerVideo::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
+void OMXPlayerVideo::SetVideoRect(const CRect &InSrcRect, const CRect &InDestRect)
 {
+  CRect SrcRect = InSrcRect, DestRect = InDestRect;
+
   // in 3d modes skip this - we get called as the gui switches from left eye to right eye
-  unsigned flags = GetStereoModeFlags(m_hints.stereo_mode);
+  unsigned flags = GetStereoModeFlags(GetStereoMode());
+
   if (CONF_FLAGS_STEREO_MODE_MASK(flags))
-    return;
+  {
+    if (g_graphicsContext.GetStereoMode() == RENDER_STEREO_MODE_MONO)
+    {
+       if (GetStereoMode() == "left_right")
+         SrcRect.SetRect(0, 0, m_hints.width>>1, m_hints.height);
+       else if (GetStereoMode() == "right_left")
+         SrcRect.SetRect(m_hints.width>>1, 0, m_hints.width, m_hints.height);
+       else if (GetStereoMode() == "top_bottom")
+         SrcRect.SetRect(0, 0, m_hints.width, m_hints.height>>1);
+       else if (GetStereoMode() == "bottom_top")
+         SrcRect.SetRect(0, m_hints.height>>1, m_hints.width, m_hints.height);
+    }
+    else
+      SrcRect.SetRect(0, 0, m_hints.width, m_hints.height);
+    // interpreted as fullscreen
+    DestRect.SetRect(0, 0, 0, 0);
+  }
 
   // check if destination rect or video view mode has changed
-  if ((m_dst_rect != DestRect) || (m_view_mode != CMediaSettings::Get().GetCurrentVideoSettings().m_ViewMode))
+  if (m_dst_rect != DestRect || m_src_rect != SrcRect)
   {
+    m_src_rect  = SrcRect;
     m_dst_rect  = DestRect;
-    m_view_mode = CMediaSettings::Get().GetCurrentVideoSettings().m_ViewMode;
   }
   else
   {
@@ -664,12 +681,11 @@ void OMXPlayerVideo::SetVideoRect(const CRect &SrcRect, const CRect &DestRect)
 
   // might need to scale up m_dst_rect to display size as video decodes
   // to separate video plane that is at display size.
-  CRect gui, display, dst_rect;
   RESOLUTION res = g_graphicsContext.GetVideoResolution();
-  gui.SetRect(0, 0, CDisplaySettings::Get().GetResolutionInfo(res).iWidth, CDisplaySettings::Get().GetResolutionInfo(res).iHeight);
-  display.SetRect(0, 0, CDisplaySettings::Get().GetResolutionInfo(res).iScreenWidth, CDisplaySettings::Get().GetResolutionInfo(res).iScreenHeight);
-  
-  dst_rect = m_dst_rect;
+  CRect gui(0, 0, CDisplaySettings::Get().GetResolutionInfo(res).iWidth, CDisplaySettings::Get().GetResolutionInfo(res).iHeight);
+  CRect display(0, 0, CDisplaySettings::Get().GetResolutionInfo(res).iScreenWidth, CDisplaySettings::Get().GetResolutionInfo(res).iScreenHeight);
+  CRect dst_rect(m_dst_rect);
+
   if (gui != display)
   {
     float xscale = display.Width()  / gui.Width();
@@ -703,7 +719,7 @@ void OMXPlayerVideo::ResolutionUpdateCallBack(uint32_t width, uint32_t height, f
     m_bAllowFullscreen = false; // only allow on first configure
   }
 
-  flags |= GetStereoModeFlags(m_hints.stereo_mode);
+  flags |= GetStereoModeFlags(GetStereoMode());
 
   if(flags & CONF_FLAGS_STEREO_MODE_SBS)
   {

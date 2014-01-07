@@ -5477,6 +5477,14 @@ msgctxt "#14100"
 msgid "Stop ripping CD"
 msgstr "Interromper a conversão do CD"
 
+msgctxt "#15012"
+msgid "Unavailable source"
+msgstr "Fonte indisponível"
+
+msgctxt "#15014"
+msgid "Keep"
+msgstr "Manter"
+
 msgctxt "#15015"
 msgid "Remove"
 msgstr "Remover"
@@ -5901,6 +5909,10 @@ msgctxt "#16325"
 msgid "VDPAU - Bob"
 msgstr "VDPAU - Bob"
 
+msgctxt "#16326"
+msgid "DXVA-HD"
+msgstr "DXVA-HD"
+
 msgctxt "#16400"
 msgid "Post-processing"
 msgstr "Pós-processamento"
@@ -6196,6 +6208,10 @@ msgstr "Este evento não pode ser apagado. Verifique o registo para mais detalhe
 msgctxt "#19069"
 msgid "EPG"
 msgstr "EPG"
+
+msgctxt "#19070"
+msgid "Go to now"
+msgstr "Ir para agora"
 
 msgctxt "#19071"
 msgid "EPG update interval"
@@ -10189,6 +10205,22 @@ msgctxt "#24115"
 msgid "Save subtitles to movie folder"
 msgstr "Guardar legendas na pasta do filme"
 
+msgctxt "#24116"
+msgid "Default TV Service"
+msgstr "Serviço Padrão para Séries"
+
+msgctxt "#24117"
+msgid "Select service that will be used as default to search for TV Show subtitles"
+msgstr "Escolher o serviço que será usado como padrão ao procurar legendas de Séries TV"
+
+msgctxt "#24118"
+msgid "Default Movie Service"
+msgstr "Serviço Padrão para Filmes"
+
+msgctxt "#24119"
+msgid "Select service that will be used as default to search for Movie subtitles"
+msgstr "Escolher o serviço que será usado como padrão ao procurar legendas de Séries TV"
+
 msgctxt "#25000"
 msgid "Notifications"
 msgstr "Notificações"
@@ -12380,6 +12412,14 @@ msgstr "Activar isto para tornar o som dos diálogos mais alto quando comparado 
 msgctxt "#36544"
 msgid "Enable hardware decoding of video files."
 msgstr "Activa a descodificação por hardware de ficheiros vídeo."
+
+msgctxt "#36545"
+msgid "Subtitle stereoscopic depth"
+msgstr "Profundidade estereoscópica das legendas"
+
+msgctxt "#36546"
+msgid "Sets the visual depth of subtitles for stereoscopic videos. The higher the value, the closer the subtitles will appear to the viewer."
+msgstr "Definir a profundidade visual das legendas para vídeos estereoscópicos. Quanto mais alto o valor, mais próximas ficarão as legendas do espectador."
 
 msgctxt "#37000"
 msgid "(Visually Impaired)"

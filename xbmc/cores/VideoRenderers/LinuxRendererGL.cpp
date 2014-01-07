@@ -71,6 +71,9 @@
   #include "osx/CocoaInterface.h"
   #include <CoreVideo/CoreVideo.h>
   #include <OpenGL/CGLIOSurface.h>
+  #ifdef TARGET_DARWIN_OSX
+    #include "osx/DarwinUtils.h"
+  #endif
 #endif
 
 #ifdef HAS_GLX
@@ -319,6 +322,19 @@ bool CLinuxRendererGL::Configure(unsigned int width, unsigned int height, unsign
 
   m_pboSupported = glewIsSupported("GL_ARB_pixel_buffer_object") && CSettings::Get().GetBool("videoplayer.usepbo");
 
+#ifdef TARGET_DARWIN_OSX
+  // on osx 10.9 mavericks we get a strange ripple
+  // effect when rendering with pbo
+  // when used on intel gpu - we have to quirk it here
+  if (DarwinIsMavericks())
+  {
+    std::string rendervendor = g_Windowing.GetRenderVendor();
+    StringUtils::ToLower(rendervendor);
+    if (rendervendor.find("intel") != std::string::npos)
+      m_pboSupported = false;
+  }
+#endif
+
   return true;
 }
 
@@ -521,81 +537,6 @@ void CLinuxRendererGL::LoadPlane( YUVPLANE& plane, int type, unsigned flipindex
     glBindBufferARB(GL_PIXEL_UNPACK_BUFFER_ARB, 0);
 
   plane.flipindex = flipindex;
-}
-
-bool CLinuxRendererGL::UploadYV12Texture(int source)
-{
-  YUVBUFFER& buf    =  m_buffers[source];
-  YV12Image* im     = &buf.image;
-  YUVFIELDS& fields =  buf.fields;
-
-  if (!(im->flags&IMAGE_FLAG_READY))
-    return false;
-  bool deinterlacing;
-  if (m_currentField == FIELD_FULL)
-    deinterlacing = false;
-  else
-    deinterlacing = true;
-
-  glEnable(m_textureTarget);
-  VerifyGLState();
-
-  glPixelStorei(GL_UNPACK_ALIGNMENT,1);
-
-  if (deinterlacing)
-  {
-    // Load Even Y Field
-    LoadPlane( fields[FIELD_TOP][0] , GL_LUMINANCE, buf.flipindex
-             , im->width, im->height >> 1
-             , im->stride[0]*2, im->bpp, im->plane[0] );
-
-    //load Odd Y Field
-    LoadPlane( fields[FIELD_BOT][0], GL_LUMINANCE, buf.flipindex
-             , im->width, im->height >> 1
-             , im->stride[0]*2, im->bpp, im->plane[0] + im->stride[0]) ;
-
-    // Load Even U & V Fields
-    LoadPlane( fields[FIELD_TOP][1], GL_LUMINANCE, buf.flipindex
-             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
-             , im->stride[1]*2, im->bpp, im->plane[1] );
-
-    LoadPlane( fields[FIELD_TOP][2], GL_ALPHA, buf.flipindex
-             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
-             , im->stride[2]*2, im->bpp, im->plane[2] );
-
-    // Load Odd U & V Fields
-    LoadPlane( fields[FIELD_BOT][1], GL_LUMINANCE, buf.flipindex
-             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
-             , im->stride[1]*2, im->bpp, im->plane[1] + im->stride[1] );
-
-    LoadPlane( fields[FIELD_BOT][2], GL_ALPHA, buf.flipindex
-             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
-             , im->stride[2]*2, im->bpp, im->plane[2] + im->stride[2] );
-  }
-  else
-  {
-    //Load Y plane
-    LoadPlane( fields[FIELD_FULL][0], GL_LUMINANCE, buf.flipindex
-             , im->width, im->height
-             , im->stride[0], im->bpp, im->plane[0] );
-
-    //load U plane
-    LoadPlane( fields[FIELD_FULL][1], GL_LUMINANCE, buf.flipindex
-             , im->width >> im->cshift_x, im->height >> im->cshift_y
-             , im->stride[1], im->bpp, im->plane[1] );
-
-    //load V plane
-    LoadPlane( fields[FIELD_FULL][2], GL_ALPHA, buf.flipindex
-             , im->width >> im->cshift_x, im->height >> im->cshift_y
-             , im->stride[2], im->bpp, im->plane[2] );
-  }
-
-  VerifyGLState();
-
-  CalculateTextureSourceRects(source, 3);
-
-  glDisable(m_textureTarget);
-  return true;
 }
 
 void CLinuxRendererGL::Reset()
@@ -805,6 +746,22 @@ unsigned int CLinuxRendererGL::PreInit()
   GLint size;
   glTexImage2D(GL_PROXY_TEXTURE_2D, 0, GL_LUMINANCE16, NP2(1920), NP2(1080), 0, GL_LUMINANCE, GL_UNSIGNED_SHORT, NULL);
   glGetTexLevelParameteriv(GL_PROXY_TEXTURE_2D, 0, GL_TEXTURE_LUMINANCE_SIZE, &size);
+#ifdef TARGET_DARWIN_OSX
+  /* From VLC commit 701d1347faa29f52b0a04c587724deb6de1ae28e
+   * OpenGL 1.x on OS X does _not_ support 16bit shaders, but pretends to.
+   * That's why we enforce return false here, even though the actual code below
+   * would return true.
+   * This fixes playback of 10bit content on the Intel GMA 950 chipset, which is
+   * the only "GPU" supported by 10.6 and 10.7 with just an OpenGL 1.4 driver.
+   *
+   * Presumely, this also improves playback on the GMA 3100, GeForce FX 5200,
+   * GeForce4 Ti, GeForce3, GeForce2 MX/4 MX and the Radeon 8500 when
+   * running OS X 10.5. */
+  unsigned int maj, min;
+  g_Windowing.GetRenderVersion(maj, min);
+  if (maj < 2)
+    size = 8;
+#endif
   if(size >= 16)
   {
     m_formats.push_back(RENDER_FMT_YUV420P10);
@@ -899,6 +856,15 @@ void CLinuxRendererGL::UpdateVideoFilter()
     if (((m_renderMethod & RENDER_VDPAU) || (m_renderMethod & RENDER_VAAPI)) && m_nonLinStretch)
     {
       m_pVideoFilterShader = new StretchFilterShader();
+      if (!m_pVideoFilterShader->CompileAndLink())
+      {
+        CLog::Log(LOGERROR, "GL: Error compiling and linking video filter shader");
+        break;
+      }
+    }
+    else
+    {
+      m_pVideoFilterShader = new DefaultFilterShader();
       if (!m_pVideoFilterShader->CompileAndLink())
       {
         CLog::Log(LOGERROR, "GL: Error compiling and linking video filter shader");
@@ -1611,7 +1577,6 @@ void CLinuxRendererGL::RenderVDPAU(int index, int field)
 
   // make sure we know the correct texture size
   GetPlaneTextureSize(plane);
-  CalculateTextureSourceRects(index, 1);
 
   // Try some clamping or wrapping
   glTexParameteri(m_textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -1658,10 +1623,10 @@ void CLinuxRendererGL::RenderVDPAU(int index, int field)
   }
   else
   {
-    glTexCoord2f(m_rotatedDestCoords[0].x, m_rotatedDestCoords[0].y); glVertex4f(m_rotatedDestCoords[0].x, m_rotatedDestCoords[0].y, 0.0f, 0.0f);
-    glTexCoord2f(m_rotatedDestCoords[1].x, m_rotatedDestCoords[1].y); glVertex4f(m_rotatedDestCoords[1].x, m_rotatedDestCoords[1].y, 1.0f, 0.0f);
-    glTexCoord2f(m_rotatedDestCoords[2].x, m_rotatedDestCoords[2].y); glVertex4f(m_rotatedDestCoords[2].x, m_rotatedDestCoords[2].y, 1.0f, 1.0f);
-    glTexCoord2f(m_rotatedDestCoords[3].x, m_rotatedDestCoords[3].y); glVertex4f(m_rotatedDestCoords[3].x, m_rotatedDestCoords[3].y, 0.0f, 1.0f);
+    glTexCoord2f(plane.rect.x1, plane.rect.y1); glVertex4f(m_rotatedDestCoords[0].x, m_rotatedDestCoords[0].y, 0.0f, 0.0f);
+    glTexCoord2f(plane.rect.x2, plane.rect.y1); glVertex4f(m_rotatedDestCoords[1].x, m_rotatedDestCoords[1].y, 1.0f, 0.0f);
+    glTexCoord2f(plane.rect.x2, plane.rect.y2); glVertex4f(m_rotatedDestCoords[2].x, m_rotatedDestCoords[2].y, 1.0f, 1.0f);
+    glTexCoord2f(plane.rect.x1, plane.rect.y2); glVertex4f(m_rotatedDestCoords[3].x, m_rotatedDestCoords[3].y, 0.0f, 1.0f);
   }
   glEnd();
   VerifyGLState();
@@ -1846,6 +1811,81 @@ bool CLinuxRendererGL::RenderCapture(CRenderCapture* capture)
 //********************************************************************************************************
 // YV12 Texture creation, deletion, copying + clearing
 //********************************************************************************************************
+bool CLinuxRendererGL::UploadYV12Texture(int source)
+{
+  YUVBUFFER& buf    =  m_buffers[source];
+  YV12Image* im     = &buf.image;
+  YUVFIELDS& fields =  buf.fields;
+
+  if (!(im->flags&IMAGE_FLAG_READY))
+    return false;
+  bool deinterlacing;
+  if (m_currentField == FIELD_FULL)
+    deinterlacing = false;
+  else
+    deinterlacing = true;
+
+  glEnable(m_textureTarget);
+  VerifyGLState();
+
+  glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+
+  if (deinterlacing)
+  {
+    // Load Even Y Field
+    LoadPlane( fields[FIELD_TOP][0] , GL_LUMINANCE, buf.flipindex
+             , im->width, im->height >> 1
+             , im->stride[0]*2, im->bpp, im->plane[0] );
+
+    //load Odd Y Field
+    LoadPlane( fields[FIELD_BOT][0], GL_LUMINANCE, buf.flipindex
+             , im->width, im->height >> 1
+             , im->stride[0]*2, im->bpp, im->plane[0] + im->stride[0]) ;
+
+    // Load Even U & V Fields
+    LoadPlane( fields[FIELD_TOP][1], GL_LUMINANCE, buf.flipindex
+             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
+             , im->stride[1]*2, im->bpp, im->plane[1] );
+
+    LoadPlane( fields[FIELD_TOP][2], GL_ALPHA, buf.flipindex
+             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
+             , im->stride[2]*2, im->bpp, im->plane[2] );
+
+    // Load Odd U & V Fields
+    LoadPlane( fields[FIELD_BOT][1], GL_LUMINANCE, buf.flipindex
+             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
+             , im->stride[1]*2, im->bpp, im->plane[1] + im->stride[1] );
+
+    LoadPlane( fields[FIELD_BOT][2], GL_ALPHA, buf.flipindex
+             , im->width >> im->cshift_x, im->height >> (im->cshift_y + 1)
+             , im->stride[2]*2, im->bpp, im->plane[2] + im->stride[2] );
+  }
+  else
+  {
+    //Load Y plane
+    LoadPlane( fields[FIELD_FULL][0], GL_LUMINANCE, buf.flipindex
+             , im->width, im->height
+             , im->stride[0], im->bpp, im->plane[0] );
+
+    //load U plane
+    LoadPlane( fields[FIELD_FULL][1], GL_LUMINANCE, buf.flipindex
+             , im->width >> im->cshift_x, im->height >> im->cshift_y
+             , im->stride[1], im->bpp, im->plane[1] );
+
+    //load V plane
+    LoadPlane( fields[FIELD_FULL][2], GL_ALPHA, buf.flipindex
+             , im->width >> im->cshift_x, im->height >> im->cshift_y
+             , im->stride[2], im->bpp, im->plane[2] );
+  }
+
+  VerifyGLState();
+
+  CalculateTextureSourceRects(source, 3);
+
+  glDisable(m_textureTarget);
+  return true;
+}
+
 void CLinuxRendererGL::DeleteYV12Texture(int index)
 {
   YV12Image &im     = m_buffers[index].image;
@@ -1893,6 +1933,25 @@ void CLinuxRendererGL::DeleteYV12Texture(int index)
       }
     }
   }
+}
+
+static GLint GetInternalFormat(GLint format, int bpp)
+{
+  if(bpp == 2)
+  {
+    switch (format)
+    {
+#ifdef GL_ALPHA16
+      case GL_ALPHA:     return GL_ALPHA16;
+#endif
+#ifdef GL_LUMINANCE16
+      case GL_LUMINANCE: return GL_LUMINANCE16;
+#endif
+      default:           return format;
+    }
+  }
+  else
+    return format;
 }
 
 bool CLinuxRendererGL::CreateYV12Texture(int index)
@@ -2039,21 +2098,10 @@ bool CLinuxRendererGL::CreateYV12Texture(int index)
         GLenum format;
         GLint internalformat;
         if (p == 2) //V plane needs an alpha texture
-        {
           format = GL_ALPHA;
-          if(im.bpp == 2)
-            internalformat = GL_ALPHA16;
-          else
-            internalformat = GL_ALPHA;
-        }
         else
-        {
           format = GL_LUMINANCE;
-          if(im.bpp == 2)
-            internalformat = GL_LUMINANCE16;
-          else
-            internalformat = GL_LUMINANCE;
-        }
+        internalformat = GetInternalFormat(format, im.bpp);
 
         glTexImage2D(m_textureTarget, 0, internalformat, plane.texwidth, plane.texheight, 0, format, GL_UNSIGNED_BYTE, NULL);
       }
@@ -2399,23 +2447,27 @@ bool CLinuxRendererGL::UploadVDPAUTexture(int index)
 
   plane.id = vdpau->texture[0];
 
+  // in stereoscopic mode sourceRect may only
+  // be a part of the source video surface
   plane.rect = m_sourceRect;
-  plane.width  = im.width;
-  plane.height = im.height;
 
-  plane.height  /= plane.pixpertex_y;
-  plane.rect.y1 /= plane.pixpertex_y;
-  plane.rect.y2 /= plane.pixpertex_y;
-  plane.width   /= plane.pixpertex_x;
-  plane.rect.x1 /= plane.pixpertex_x;
-  plane.rect.x2 /= plane.pixpertex_x;
+  // clip rect
+  if (vdpau->crop.x1 > plane.rect.x1)
+    plane.rect.x1 = vdpau->crop.x1;
+  if (vdpau->crop.x2 < plane.rect.x2)
+    plane.rect.x2 = vdpau->crop.x2;
+  if (vdpau->crop.y1 > plane.rect.y1)
+    plane.rect.y1 = vdpau->crop.y1;
+  if (vdpau->crop.y2 < plane.rect.y2)
+    plane.rect.y2 = vdpau->crop.y2;
+
+  plane.texheight = vdpau->texHeight;
+  plane.texwidth  = vdpau->texWidth;
 
   if (m_textureTarget == GL_TEXTURE_2D)
   {
-    plane.height  /= plane.texheight;
     plane.rect.y1 /= plane.texheight;
     plane.rect.y2 /= plane.texheight;
-    plane.width   /= plane.texwidth;
     plane.rect.x1 /= plane.texwidth;
     plane.rect.x2 /= plane.texwidth;
   }

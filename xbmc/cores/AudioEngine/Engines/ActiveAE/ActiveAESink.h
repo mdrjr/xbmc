@@ -22,11 +22,11 @@
 #include "threads/Event.h"
 #include "threads/Thread.h"
 #include "utils/ActorProtocol.h"
-#include "Interfaces/AE.h"
-#include "Interfaces/AESink.h"
-#include "AESinkFactory.h"
-#include "ActiveAEResample.h"
-#include "Utils/AEConvert.h"
+#include "cores/AudioEngine/Interfaces/AE.h"
+#include "cores/AudioEngine/Interfaces/AESink.h"
+#include "cores/AudioEngine/AESinkFactory.h"
+#include "cores/AudioEngine/Engines/ActiveAE/ActiveAEResample.h"
+#include "cores/AudioEngine/Utils/AEConvert.h"
 
 namespace ActiveAE
 {
@@ -41,6 +41,14 @@ struct SinkConfig
   const std::string *device;
 };
 
+struct SinkReply
+{
+  AEAudioFormat format;
+  float cacheTotal;
+  float latency;
+  bool hasVolume;
+};
+
 class CSinkControlProtocol : public Protocol
 {
 public:
@@ -50,7 +58,6 @@ public:
     CONFIGURE,
     UNCONFIGURE,
     SILENCEMODE,
-    ISCOMPATIBLE,
     VOLUME,
     FLUSH,
     TIMEOUT,
@@ -88,7 +95,6 @@ public:
   std::string GetDefaultDevice(bool passthrough);
   void Start();
   void Dispose();
-  bool HasVolume();
   AEDeviceType GetDeviceType(const std::string &device);
   bool HasPassthroughDevice();
   CSinkControlProtocol m_controlPort;
@@ -101,7 +107,6 @@ protected:
   void GetDeviceFriendlyName(std::string &device);
   void OpenSink();
   void ReturnBuffers();
-  bool IsCompatible(const AEAudioFormat format, const std::string &device);
 
   unsigned int OutputSamples(CSampleBuffer* samples);
   void ConvertInit(CSampleBuffer* samples);
@@ -116,7 +121,7 @@ protected:
   bool m_bStateMachineSelfTrigger;
   int m_extTimeout;
   bool m_extError;
-  int m_extSilenceTimeout;
+  unsigned int m_extSilenceTimeout;
   XbmcThreads::EndTime m_extSilenceTimer;
 
   CSampleBuffer m_sampleOfSilence;

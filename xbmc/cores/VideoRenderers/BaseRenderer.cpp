@@ -57,6 +57,8 @@ CBaseRenderer::CBaseRenderer()
 
   m_RenderUpdateCallBackFn = NULL;
   m_RenderUpdateCallBackCtx = NULL;
+  m_RenderFeaturesCallBackFn = NULL;
+  m_RenderFeaturesCallBackCtx = NULL;
 }
 
 CBaseRenderer::~CBaseRenderer()
@@ -578,10 +580,21 @@ void CBaseRenderer::ManageDisplay()
   switch(stereo_mode)
   {
     case CONF_FLAGS_STEREO_MODE_TAB:
-      if     (stereo_view == RENDER_STEREO_VIEW_LEFT)
-        m_sourceRect.y2 *= 0.5f;
-      else if(stereo_view == RENDER_STEREO_VIEW_RIGHT)
-        m_sourceRect.y1 += m_sourceRect.y2*0.5f;
+      // Those are flipped in y
+      if (m_format == RENDER_FMT_CVBREF || m_format == RENDER_FMT_EGLIMG || m_format == RENDER_FMT_MEDIACODEC)
+      {
+        if (stereo_view == RENDER_STEREO_VIEW_LEFT)
+          m_sourceRect.y1 += m_sourceRect.y2*0.5f;
+        else if(stereo_view == RENDER_STEREO_VIEW_RIGHT)
+          m_sourceRect.y2 *= 0.5f;
+      }
+      else
+      {
+        if (stereo_view == RENDER_STEREO_VIEW_LEFT)
+          m_sourceRect.y2 *= 0.5f;
+        else if(stereo_view == RENDER_STEREO_VIEW_RIGHT)
+          m_sourceRect.y1 += m_sourceRect.y2*0.5f;
+      }
       break;
 
     case CONF_FLAGS_STEREO_MODE_SBS:
@@ -731,6 +744,8 @@ void CBaseRenderer::SettingOptionsRenderMethodsFiller(const CSetting *setting, s
   list.push_back(make_pair(g_localizeStrings.Get(13416), RENDER_METHOD_AUTO));
 
 #ifdef HAS_DX
+  if (CSysInfo::IsWindowsVersionAtLeast(CSysInfo::WindowsVersionWin7))
+    list.push_back(make_pair(g_localizeStrings.Get(16326), RENDER_METHOD_DXVAHD));
   list.push_back(make_pair(g_localizeStrings.Get(16319), RENDER_METHOD_DXVA));
   list.push_back(make_pair(g_localizeStrings.Get(13431), RENDER_METHOD_D3D_PS));
   list.push_back(make_pair(g_localizeStrings.Get(13419), RENDER_METHOD_SOFTWARE));

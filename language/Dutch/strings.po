@@ -5477,6 +5477,14 @@ msgctxt "#14100"
 msgid "Stop ripping CD"
 msgstr "CD rippen stoppen"
 
+msgctxt "#15012"
+msgid "Unavailable source"
+msgstr "Niet beschikbare bron"
+
+msgctxt "#15014"
+msgid "Keep"
+msgstr "Behouden"
+
 msgctxt "#15015"
 msgid "Remove"
 msgstr "Verwijder"
@@ -5901,6 +5909,10 @@ msgctxt "#16325"
 msgid "VDPAU - Bob"
 msgstr "VDPAU - Bob"
 
+msgctxt "#16326"
+msgid "DXVA-HD"
+msgstr "DXVA-HD"
+
 msgctxt "#16400"
 msgid "Post-processing"
 msgstr "Kwaliteitsverbetering video"
@@ -6196,6 +6208,10 @@ msgstr "Kon de opname niet verwijderen"
 msgctxt "#19069"
 msgid "EPG"
 msgstr "TV gids"
+
+msgctxt "#19070"
+msgid "Go to now"
+msgstr "Ga naar nu"
 
 msgctxt "#19071"
 msgid "EPG update interval"
@@ -10189,6 +10205,22 @@ msgctxt "#24115"
 msgid "Save subtitles to movie folder"
 msgstr "Sla ondertitels op in filmmap"
 
+msgctxt "#24116"
+msgid "Default TV Service"
+msgstr "Standaard TV service"
+
+msgctxt "#24117"
+msgid "Select service that will be used as default to search for TV Show subtitles"
+msgstr "Selecteer dienst dat zal worden gebruik als standaard om te zoeken naar TV serie ondertitels"
+
+msgctxt "#24118"
+msgid "Default Movie Service"
+msgstr "Standaard films dienst"
+
+msgctxt "#24119"
+msgid "Select service that will be used as default to search for Movie subtitles"
+msgstr "Selecteer dienst dat zal worden gebruikt als standaard om te zoeken voor film ondertitels"
+
 msgctxt "#25000"
 msgid "Notifications"
 msgstr "Mededelingen"
@@ -12380,6 +12412,14 @@ msgstr "Schakel dit in om de conversatie luider af te spelen in vergelijking met
 msgctxt "#36544"
 msgid "Enable hardware decoding of video files."
 msgstr "Gebruik hardware decodering van video bestanden."
+
+msgctxt "#36545"
+msgid "Subtitle stereoscopic depth"
+msgstr "Ondertitel Stereoscopische diepte"
+
+msgctxt "#36546"
+msgid "Sets the visual depth of subtitles for stereoscopic videos. The higher the value, the closer the subtitles will appear to the viewer."
+msgstr "Stelt de visuele diepte van ondertitels in voor stereoscopische video`s. Hoe hoger de waarde, des te dichterbij zullen de ondertitels verschijnen voor de kijker."
 
 msgctxt "#37000"
 msgid "(Visually Impaired)"

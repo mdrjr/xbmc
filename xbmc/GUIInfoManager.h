@@ -498,7 +498,7 @@ namespace INFO
 
 #define VERSION_MAJOR               13
 #define VERSION_MINOR               0
-#define VERSION_TAG                 "-ALPHA11"
+#define VERSION_TAG                 "-ALPHA12"
 
 #define LISTITEM_START              35000
 #define LISTITEM_THUMB              (LISTITEM_START)
@@ -758,7 +758,7 @@ public:
   // Current song stuff
   /// \brief Retrieves tag info (if necessary) and fills in our current song path.
   void SetCurrentSong(CFileItem &item);
-  void SetCurrentAlbumThumb(const CStdString thumbFileName);
+  void SetCurrentAlbumThumb(const CStdString &thumbFileName);
   void SetCurrentMovie(CFileItem &item);
   void SetCurrentSlide(CFileItem &item);
   const CFileItem &GetCurrentSlide() const;

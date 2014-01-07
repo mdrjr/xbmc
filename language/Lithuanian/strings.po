@@ -207,67 +207,67 @@ msgstr "Gruo"
 
 msgctxt "#71"
 msgid "N"
-msgstr "N"
+msgstr "Š"
 
 msgctxt "#72"
 msgid "NNE"
-msgstr "NNE"
+msgstr "ŠŠR"
 
 msgctxt "#73"
 msgid "NE"
-msgstr "NE"
+msgstr "ŠR"
 
 msgctxt "#74"
 msgid "ENE"
-msgstr "ENE"
+msgstr "RŠR"
 
 msgctxt "#75"
 msgid "E"
-msgstr "E"
+msgstr "R"
 
 msgctxt "#76"
 msgid "ESE"
-msgstr "ESE"
+msgstr "RPR"
 
 msgctxt "#77"
 msgid "SE"
-msgstr "SE"
+msgstr "PR"
 
 msgctxt "#78"
 msgid "SSE"
-msgstr "SSE"
+msgstr "PPR"
 
 msgctxt "#79"
 msgid "S"
-msgstr "S"
+msgstr "P"
 
 msgctxt "#80"
 msgid "SSW"
-msgstr "SSW"
+msgstr "PPV"
 
 msgctxt "#81"
 msgid "SW"
-msgstr "SW"
+msgstr "PV"
 
 msgctxt "#82"
 msgid "WSW"
-msgstr "WSW"
+msgstr "VPV"
 
 msgctxt "#83"
 msgid "W"
-msgstr "W"
+msgstr "V"
 
 msgctxt "#84"
 msgid "WNW"
-msgstr "WNW"
+msgstr "VŠV"
 
 msgctxt "#85"
 msgid "NW"
-msgstr "NW"
+msgstr "ŠV"
 
 msgctxt "#86"
 msgid "NNW"
-msgstr "NNW"
+msgstr "ŠŠV"
 
 msgctxt "#87"
 msgid "VAR"
@@ -311,7 +311,7 @@ msgstr "Žiūrėti: Sąrašas"
 
 msgctxt "#102"
 msgid "Scan"
-msgstr "Peržvelgti"
+msgstr "Nuskaityti"
 
 msgctxt "#103"
 msgid "Sort by: Name"
@@ -347,7 +347,7 @@ msgstr "Sukurti miniatiūras"
 
 msgctxt "#111"
 msgid "Shortcuts"
-msgstr "Etiketės"
+msgstr "Nuorodos"
 
 msgctxt "#112"
 msgid "Paused"
@@ -371,7 +371,7 @@ msgstr "Perkelti"
 
 msgctxt "#117"
 msgid "Delete"
-msgstr "Ištrynti"
+msgstr "Panaikinti"
 
 msgctxt "#118"
 msgid "Rename"
@@ -383,27 +383,27 @@ msgstr "Naujas aplankas"
 
 msgctxt "#120"
 msgid "Confirm file copy"
-msgstr "Kopijavimo patvirtinimas"
+msgstr "Patvirtinti failo kopiją"
 
 msgctxt "#121"
 msgid "Confirm file move"
-msgstr "Perkėlimo patvirtinimas"
+msgstr "Patvirtinti failo perkėlimą"
 
 msgctxt "#122"
 msgid "Confirm file delete?"
-msgstr "Patvirtinti failo ištrinimą?"
+msgstr "Patvirtinti failo panaikinimą ?"
 
 msgctxt "#123"
 msgid "Copy these files?"
-msgstr "Kopijuoti failus?"
+msgstr "Kopijuoti šiuos failus ?"
 
 msgctxt "#124"
 msgid "Move these files?"
-msgstr "Perkelti failus?"
+msgstr "Perkelti šiuos failus ?"
 
 msgctxt "#125"
 msgid "Delete these files? - Deleting files cannot be undone!"
-msgstr "Pašalinti šiuos failus? - Failų trynimas negali būti atšauktas!"
+msgstr "Pašalinti šiuos failus ? - Failų šalinimas negali būti atšauktas!"
 
 msgctxt "#126"
 msgid "Status"
@@ -423,7 +423,7 @@ msgstr "Skaidrių peržiūra"
 
 msgctxt "#130"
 msgid "System info"
-msgstr "Sistemos informcija"
+msgstr "Sistemos info"
 
 msgctxt "#131"
 msgid "Display"
@@ -475,7 +475,7 @@ msgstr "Laikas:"
 
 msgctxt "#143"
 msgid "Current:"
-msgstr "Aktualus:"
+msgstr "Dabartinis:"
 
 msgctxt "#144"
 msgid "Build:"
@@ -487,7 +487,7 @@ msgstr "Tinklas:"
 
 msgctxt "#146"
 msgid "Type:"
-msgstr "Rūšis:"
+msgstr "Tipas:"
 
 msgctxt "#147"
 msgid "Static"
@@ -511,11 +511,11 @@ msgstr "Nuoroda:"
 
 msgctxt "#152"
 msgid "Half duplex"
-msgstr "Pakaitinis dvipusis ryšys"
+msgstr "Pusiau dvipusis"
 
 msgctxt "#153"
 msgid "Full duplex"
-msgstr "Pilnas dvipusis ryšys"
+msgstr "Visiškai dvipusis"
 
 msgctxt "#154"
 msgid "Storage"
@@ -523,7 +523,7 @@ msgstr "Saugykla"
 
 msgctxt "#155"
 msgid "Drive"
-msgstr "Dėtuvė"
+msgstr "Vykdyti"
 
 msgctxt "#156"
 msgid "Free"
@@ -583,11 +583,11 @@ msgstr "Rezoliucija"
 
 msgctxt "#170"
 msgid "Adjust display refresh rate to match video"
-msgstr "Nustatyti ekrano atnaujinimo dažnį, kad atitiktų vaizdą"
+msgstr "Nustatyti ekrano atnaujinimo dažnį, kad atitiktų vaizdo įrašą"
 
 msgctxt "#171"
 msgid "Sort title"
-msgstr "Rūšiuoti pagal pavadinimą"
+msgstr "Rūšiuoti - Pavadinimas"
 
 msgctxt "#172"
 msgid "Release date"
@@ -595,7 +595,7 @@ msgstr "Išleidimo data"
 
 msgctxt "#173"
 msgid "Display 4:3 videos as"
-msgstr "Rodyti vaizdo formatą 4:3 ..."
+msgstr "Rodyti 4:3 video kaip"
 
 msgctxt "#175"
 msgid "Moods"
@@ -619,11 +619,11 @@ msgstr "Pasirinkite albumą"
 
 msgctxt "#182"
 msgid "Tracks"
-msgstr "Dainos"
+msgstr "Takeliai"
 
 msgctxt "#183"
 msgid "Review"
-msgstr "Peržiūrėti"
+msgstr "Apžvalga"
 
 msgctxt "#184"
 msgid "Refresh"
@@ -635,7 +635,7 @@ msgstr "Albumų paieška"
 
 msgctxt "#186"
 msgid "OK"
-msgstr "Gerai"
+msgstr "OK"
 
 msgctxt "#187"
 msgid "No albums found!"
@@ -659,7 +659,7 @@ msgstr "Sumaišyti"
 
 msgctxt "#192"
 msgid "Clear"
-msgstr "Išvalyti"
+msgstr "Valyti"
 
 msgctxt "#193"
 msgid "Scan"
@@ -679,7 +679,7 @@ msgstr "Pasirinti filmą:"
 
 msgctxt "#197"
 msgid "Querying %s info"
-msgstr "Užklausos %s Informacija"
+msgstr "Užklausos %s info"
 
 msgctxt "#198"
 msgid "Loading movie details"
@@ -723,7 +723,7 @@ msgstr "Ankstesnis"
 
 msgctxt "#213"
 msgid "Calibrate user interface..."
-msgstr "Kalibruoti naudotojo sąsaja..."
+msgstr "Kalibruoti naudotojo sąsają..."
 
 msgctxt "#214"
 msgid "Video calibration..."
@@ -823,7 +823,7 @@ msgstr "Didinimas"
 
 msgctxt "#239"
 msgid "Clear playlist on finish"
-msgstr "Išvalyti grojaraštį baigus"
+msgstr "Valyti grojaraštį baigus"
 
 msgctxt "#240"
 msgid "Display Mode"
@@ -1043,7 +1043,7 @@ msgstr "Sukurti žymę"
 
 msgctxt "#296"
 msgid "Clear bookmarks"
-msgstr "Išvalyti žymas"
+msgstr "Valyti žymas"
 
 msgctxt "#297"
 msgid "Audio offset"
@@ -3543,7 +3543,7 @@ msgstr "Priedų naršyklė"
 
 msgctxt "#10041"
 msgid "Reset above settings to default"
-msgstr "Išvalyti šiuos nustatymus pagal nutylėjimą"
+msgstr "Atstatyti šiuos nustatymus į numatytuosius"
 
 msgctxt "#10042"
 msgid "Are you sure you want to reset the settings in this category?"
@@ -3863,7 +3863,7 @@ msgstr "Atstatyti užraktą"
 
 msgctxt "#12335"
 msgid "Remove lock"
-msgstr "Išvalyti užraktą"
+msgstr "Pašalinti užraktą"
 
 msgctxt "#12337"
 msgid "Numeric password"
@@ -5477,6 +5477,14 @@ msgctxt "#14100"
 msgid "Stop ripping CD"
 msgstr "Stabdyti CD nuskaitymą"
 
+msgctxt "#15012"
+msgid "Unavailable source"
+msgstr "Neprieinamas šaltinis"
+
+msgctxt "#15014"
+msgid "Keep"
+msgstr "Išsaugoti"
+
 msgctxt "#15015"
 msgid "Remove"
 msgstr "Pašalinti"
@@ -5901,6 +5909,10 @@ msgctxt "#16325"
 msgid "VDPAU - Bob"
 msgstr "VDPAU - Bob"
 
+msgctxt "#16326"
+msgid "DXVA-HD"
+msgstr "DXVA-HD"
+
 msgctxt "#16400"
 msgid "Post-processing"
 msgstr "Po apdirbimo (vėliau)"
@@ -6196,6 +6208,10 @@ msgstr "Šis įrašas negali būti ištrintas. Patikrinkite, 'Išsamesnės infor
 msgctxt "#19069"
 msgid "EPG"
 msgstr "EPG"
+
+msgctxt "#19070"
+msgid "Go to now"
+msgstr "Dabar eiti į"
 
 msgctxt "#19071"
 msgid "EPG update interval"
@@ -6807,7 +6823,7 @@ msgstr "Visada naudoti kanalo užsakymą iš posistemės(-ių)"
 
 msgctxt "#19232"
 msgid "Clear search results"
-msgstr "Išvalyti paieškos rezultatus"
+msgstr "Valyti paieškos rezultatus"
 
 msgctxt "#19233"
 msgid "Display a notification on timer updates"
@@ -9955,7 +9971,7 @@ msgstr "Išjungti priedus"
 
 msgctxt "#24040"
 msgid "(Clear the current setting)"
-msgstr "(Išvalyti dabartinius nustatymus)"
+msgstr "(Valyti dabartinius nustatymus)"
 
 msgctxt "#24041"
 msgid "Install from zip file"
@@ -10188,6 +10204,22 @@ msgstr "Neįdiegta subtitrų siuntimo paslauga"
 msgctxt "#24115"
 msgid "Save subtitles to movie folder"
 msgstr "Išsaugoti subtitrus filmo kataloge"
+
+msgctxt "#24116"
+msgid "Default TV Service"
+msgstr "Įprasta TV paslauga"
+
+msgctxt "#24117"
+msgid "Select service that will be used as default to search for TV Show subtitles"
+msgstr "Pasirinkite paslaugą, kuri bus naudojama kaip numatytoji ieškant TV šou subtitrų"
+
+msgctxt "#24118"
+msgid "Default Movie Service"
+msgstr "Įprasta filmų paslauga"
+
+msgctxt "#24119"
+msgid "Select service that will be used as default to search for Movie subtitles"
+msgstr "Pasirinkite paslaugą, kuri bus naudojama kaip numatytoji ieškant filmų subtitrų"
 
 msgctxt "#25000"
 msgid "Notifications"
@@ -12379,11 +12411,19 @@ msgstr "Įjunkite šią funkciją, dialogas garsesnis lyginant su fone girdimu '
 
 msgctxt "#36544"
 msgid "Enable hardware decoding of video files."
-msgstr "Įjungti vaizdo failų įrangos dekodavimą."
+msgstr "Įjungti įrangos dekodavimo vaizdo failus."
+
+msgctxt "#36545"
+msgid "Subtitle stereoscopic depth"
+msgstr "Subtitrų stereoskopinis gylis"
+
+msgctxt "#36546"
+msgid "Sets the visual depth of subtitles for stereoscopic videos. The higher the value, the closer the subtitles will appear to the viewer."
+msgstr "Nustato regėjimo gylio subtitrus 'Stereoscopic video'.Kuo didesnė reikšmė tuo arčiau subtitrai bus rodomi žiūrovui."
 
 msgctxt "#37000"
 msgid "(Visually Impaired)"
-msgstr "(Vizulus sutrikimas)"
+msgstr "(Žmonėms su regos negalia)"
 
 msgctxt "#37001"
 msgid "(Directors Comments)"

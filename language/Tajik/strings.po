@@ -5477,6 +5477,14 @@ msgctxt "#14100"
 msgid "Stop ripping CD"
 msgstr "Истодани нусхабардории диски CD"
 
+msgctxt "#15012"
+msgid "Unavailable source"
+msgstr "Манбаи дастнорас"
+
+msgctxt "#15014"
+msgid "Keep"
+msgstr "Нигоҳ доштан"
+
 msgctxt "#15015"
 msgid "Remove"
 msgstr "Тоза кардан"
@@ -5901,6 +5909,10 @@ msgctxt "#16325"
 msgid "VDPAU - Bob"
 msgstr "VDPAU - Bob"
 
+msgctxt "#16326"
+msgid "DXVA-HD"
+msgstr "DXVA-HD"
+
 msgctxt "#16400"
 msgid "Post-processing"
 msgstr "Коркарди баъдӣ"
@@ -6196,6 +6208,10 @@ msgstr "Ин сабт нест карда нашуд. Барои маълумо�
 msgctxt "#19069"
 msgid "EPG"
 msgstr "EPG"
+
+msgctxt "#19070"
+msgid "Go to now"
+msgstr "Ҳозир гузаронед"
 
 msgctxt "#19071"
 msgid "EPG update interval"
@@ -10189,6 +10205,22 @@ msgctxt "#24115"
 msgid "Save subtitles to movie folder"
 msgstr "Захира кардани зерунвонҳо ба ҷузвдони филм"
 
+msgctxt "#24116"
+msgid "Default TV Service"
+msgstr "Хидмати телевизионии пешфарз"
+
+msgctxt "#24117"
+msgid "Select service that will be used as default to search for TV Show subtitles"
+msgstr "Хидматеро барои истифода ҳамчун хидмати пешфарз ҳангоми ҷустуҷӯи зерунвонҳои барномаҳои телевизионӣ интихоб намоед"
+
+msgctxt "#24118"
+msgid "Default Movie Service"
+msgstr "Хидмати филмҳои пешфарз"
+
+msgctxt "#24119"
+msgid "Select service that will be used as default to search for Movie subtitles"
+msgstr "Хидматеро барои истифода ҳамчун хидмати пешфарз ҳангоми ҷустуҷӯи зерунвонҳои филмҳо интихоб намоед"
+
 msgctxt "#25000"
 msgid "Notifications"
 msgstr "Огоҳиҳо"
@@ -12380,6 +12412,14 @@ msgstr "Баландкунии садои талаффуз дар диалог �
 msgctxt "#36544"
 msgid "Enable hardware decoding of video files."
 msgstr "Фаъол кардани рамзкушоии сахтафзорӣ барои файлҳои видеоӣ."
+
+msgctxt "#36545"
+msgid "Subtitle stereoscopic depth"
+msgstr "Қаъри стереоскопии зерунвонҳо"
+
+msgctxt "#36546"
+msgid "Sets the visual depth of subtitles for stereoscopic videos. The higher the value, the closer the subtitles will appear to the viewer."
+msgstr "Қаъри стереоскопии зерунвонҳоро барои видеоҳои стереоскопӣ танзим мекунад. Қимати баланд зерунвонҳоро барои тамошобин наздиқтар намоиш медиҳад."
 
 msgctxt "#37000"
 msgid "(Visually Impaired)"

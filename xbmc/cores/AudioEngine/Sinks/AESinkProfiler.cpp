@@ -20,11 +20,11 @@
 
 #include "system.h"
 
-#include "AESinkProfiler.h"
 #include <stdint.h>
 #include <limits.h>
 
-#include "Utils/AEUtil.h"
+#include "cores/AudioEngine/Sinks/AESinkProfiler.h"
+#include "cores/AudioEngine/Utils/AEUtil.h"
 #include "utils/StdString.h"
 #include "utils/log.h"
 #include "utils/TimeUtils.h"
@@ -53,17 +53,6 @@ bool CAESinkProfiler::Initialize(AEAudioFormat &format, std::string &device)
 
 void CAESinkProfiler::Deinitialize()
 {
-}
-
-bool CAESinkProfiler::IsCompatible(const AEAudioFormat &format, const std::string &device)
-{
-  if (AE_IS_RAW(format.m_dataFormat))
-    return false;
-
-  if (format.m_dataFormat != AE_FMT_FLOAT)
-    return false;
-
-  return true;
 }
 
 double CAESinkProfiler::GetDelay()

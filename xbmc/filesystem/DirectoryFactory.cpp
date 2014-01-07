@@ -125,7 +125,8 @@ using namespace XFILE;
 IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
 {
   CURL url(strPath);
-  CWakeOnAccess::Get().WakeUpHost(url);
+  if (!CWakeOnAccess::Get().WakeUpHost(url))
+    return NULL;
 
   CFileItem item(strPath, false);
   IFileDirectory* pDir=CFileDirectoryFactory::Create(strPath, &item);
@@ -169,6 +170,9 @@ IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
   if (strProtocol == "favourites") return new CFavouritesDirectory();
   if (strProtocol == "filereader")
     return CDirectoryFactory::Create(url.GetFileName());
+#if defined(TARGET_ANDROID)
+  if (strProtocol == "androidapp") return new CAndroidAppDirectory();
+#endif
 
   if( g_application.getNetwork().IsAvailable(true) )  // true to wait for the network (if possible)
   {
@@ -225,9 +229,6 @@ IDirectory* CDirectoryFactory::Create(const CStdString& strPath)
 #endif
 #ifdef HAVE_LIBBLURAY
       if (strProtocol == "bluray") return new CBlurayDirectory();
-#endif
-#if defined(TARGET_ANDROID)
-      if (strProtocol == "androidapp") return new CAndroidAppDirectory();
 #endif
   }
 

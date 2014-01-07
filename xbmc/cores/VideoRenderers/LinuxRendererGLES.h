@@ -233,7 +233,6 @@ protected:
   bool m_bValidated;
   std::vector<ERenderFormat> m_formats;
   bool m_bImageReady;
-  ERenderFormat m_format;
   GLenum m_textureTarget;
   unsigned short m_renderMethod;
   unsigned short m_oldRenderMethod;
@@ -255,6 +254,10 @@ protected:
 
     unsigned texwidth;
     unsigned texheight;
+
+    //pixels per texel
+    unsigned pixpertex_x;
+    unsigned pixpertex_y;
 
     unsigned flipindex;
   };
@@ -295,7 +298,7 @@ protected:
 
   void LoadPlane( YUVPLANE& plane, int type, unsigned flipindex
                 , unsigned width,  unsigned height
-                , unsigned int stride, void* data );
+                , unsigned int stride, int bpp, void* data );
 
   Shaders::BaseYUV2RGBShader     *m_pYUVShader;
   Shaders::BaseVideoFilterShader *m_pVideoFilterShader;

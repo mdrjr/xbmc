@@ -8,7 +8,7 @@
 	<controls>
 		<control type="group" id="250">
 			<animation effect="slide" start="0,0" end="900,0" time="500" tween="quadratic" easing="out">WindowClose</animation> 
-			<animation type="Conditional" condition="Control.HasFocus(150)" reversible="true">
+			<animation type="Conditional" condition="Control.HasFocus(150) | Control.HasFocus(160)" reversible="true">
 				<effect type="slide" end="-250,0" time="400"/>
 			</animation>
 			<control type="button" id="8999">
@@ -59,8 +59,8 @@
 					<font>font30_title</font>
 					<align>right</align>
 					<aligny>center</aligny>
-					<textcolor>FFFFFFFF</textcolor>
-					<shadowcolor>FF000000</shadowcolor>
+					<textcolor>white</textcolor>
+					<shadowcolor>black</shadowcolor>
 				</control>
 				<control type="label">
 					<description>Video label</description>
@@ -73,7 +73,7 @@
 					<align>right</align>
 					<aligny>center</aligny>
 					<textcolor>grey</textcolor>
-					<shadowcolor>FF000000</shadowcolor>
+					<shadowcolor>black</shadowcolor>
 				</control>
 				<control type="image">
 					<left>30</left>
@@ -97,7 +97,7 @@
 					<width>780</width>
 					<height>40</height>
 					<font>font13</font>
-					<textcolor>FFFFFFFF</textcolor>
+					<textcolor>white</textcolor>
 					<align>center</align>
 					<aligny>center</aligny>
 					<wrapmultiline>true</wrapmultiline>
@@ -145,8 +145,8 @@
 							<height>38</height>
 							<font>font18</font>
 							<aligny>center</aligny>
-							<textcolor>FFFFFFFF</textcolor>
-							<selectedcolor>FF0084FF</selectedcolor>
+							<textcolor>white</textcolor>
+							<selectedcolor>selected</selectedcolor>
 							<align>left</align>
 							<info>ListItem.Label</info>
 						</control>
@@ -173,8 +173,8 @@
 							<height>38</height>
 							<font>font18</font>
 							<aligny>center</aligny>
-							<textcolor>FFFFFFFF</textcolor>
-							<selectedcolor>FF0084FF</selectedcolor>
+							<textcolor>white</textcolor>
+							<selectedcolor>selected</selectedcolor>
 							<align>left</align>
 							<info>ListItem.Label2</info>
 						</control>
@@ -216,8 +216,8 @@
 							<height>38</height>
 							<font>font18</font>
 							<aligny>center</aligny>
-							<textcolor>FFFFFFFF</textcolor>
-							<selectedcolor>FF0084FF</selectedcolor>
+							<textcolor>white</textcolor>
+							<selectedcolor>selected</selectedcolor>
 							<align>left</align>
 							<info>ListItem.Label</info>
 						</control>
@@ -244,8 +244,8 @@
 							<height>38</height>
 							<font>font18</font>
 							<aligny>center</aligny>
-							<textcolor>FFFFFFFF</textcolor>
-							<selectedcolor>FF0084FF</selectedcolor>
+							<textcolor>white</textcolor>
+							<selectedcolor>selected</selectedcolor>
 							<align>left</align>
 							<info>ListItem.Label2</info>
 						</control>
@@ -268,7 +268,7 @@
 					<align>right</align>
 					<aligny>center</aligny>
 					<subtype>page</subtype>
-					<textcolor>FFFFFFFF</textcolor>
+					<textcolor>white</textcolor>
 					<onleft>120</onleft>
 					<onright>120</onright>
 					<ondown>120</ondown>
@@ -300,7 +300,7 @@
 							<width min="10" max="260">auto</width>
 							<height>40</height>
 							<font>font13</font>
-							<textcolor>FFFFFFFF</textcolor>
+							<textcolor>white</textcolor>
 							<label>31413</label>
 							<aligny>center</aligny>
 							<wrapmultiline>true</wrapmultiline>
@@ -334,8 +334,8 @@
 					<font>font13</font>
 					<align>center</align>
 					<aligny>top</aligny>
-					<textcolor>FFEB9E17</textcolor>
-					<shadowcolor>FF000000</shadowcolor>
+					<textcolor>blue</textcolor>
+					<shadowcolor>black</shadowcolor>
 					<wrapmultiline>true</wrapmultiline>
 				</control>
 				<control type="image">
@@ -350,11 +350,11 @@
 					<left>900</left>
 					<top>206</top>
 					<width>250</width>
-					<height>434</height>
+					<height>399</height>
 					<onleft>120</onleft>
 					<onright>120</onright>
-					<onup>150</onup>
-					<ondown>150</ondown>
+					<onup>160</onup>
+					<ondown>160</ondown>
 					<viewtype label="535">list</viewtype>
 					<scrolltime>200</scrolltime>
 					<itemlayout width="400" height="36">
@@ -372,8 +372,8 @@
 							<height>38</height>
 							<font>font18</font>
 							<aligny>center</aligny>
-							<textcolor>FFFFFFFF</textcolor>
-							<selectedcolor>FF0084FF</selectedcolor>
+							<textcolor>white</textcolor>
+							<selectedcolor>selected</selectedcolor>
 							<align>left</align>
 							<info>ListItem.Label</info>
 						</control>
@@ -401,12 +401,28 @@
 							<height>38</height>
 							<font>font18</font>
 							<aligny>center</aligny>
-							<textcolor>FFFFFFFF</textcolor>
-							<selectedcolor>FF0084FF</selectedcolor>
+							<textcolor>white</textcolor>
+							<selectedcolor>selected</selectedcolor>
 							<align>left</align>
 							<info>ListItem.Label</info>
 						</control>
 					</focusedlayout>
+				</control>
+				<control type="button" id="160">
+					<description>Manual search button</description>
+					<left>925</left>
+					<top>640</top>
+					<width>200</width>
+					<height>40</height>
+					<onleft>120</onleft>
+					<onright>120</onright>
+					<onup>150</onup>
+					<ondown>150</ondown>
+					<label>$LOCALIZE[24120]</label>
+					<font>font12_title</font>
+					<textcolor>white</textcolor>
+					<focusedcolor>white</focusedcolor>
+					<align>center</align>
 				</control>
 			</control>
 		</control>

@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([xbmc], [12.9.11], [http://trac.xbmc.org])
+AC_INIT([xbmc], [12.9.12], [http://issues.xbmc.org])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
 m4_include([m4/ax_prog_cc_for_build.m4])
@@ -37,7 +37,7 @@ AC_DEFUN([XB_ADD_PLAYER],
 AC_DEFUN([XB_ADD_CODEC],
 [
   AC_MSG_CHECKING([for $2])
-  case $add_codecs in
+  case $3 in
     *$2*)
       use_codec_$2="yes"
       AC_SUBST([USE_$1], 1)
@@ -646,14 +646,14 @@ case $host in
      use_x11=no
      build_shared_lib=yes    
     ;;
-  i*86*-linux-gnu*)
+  i*86*-linux-gnu*|i*86*-*-linux-uclibc*)
      ARCH="i486-linux"
      if test "$use_cpu" = "no" -a "$cross_compiling" = "yes";  then
         use_arch="x86"
         use_cpu="i686"
      fi
      ;;
-  x86_64-*-linux-gnu*)
+  x86_64-*-linux-gnu*|x86_64-*-linux-uclibc*)
      ARCH="x86_64-linux"
      if test "$use_cpu" = "no" -a "$cross_compiling" = "yes";  then
         use_arch="x86_64"
@@ -698,10 +698,10 @@ case $host in
      ARCH="powerpc-osx"
      use_arch="ppc"
      ;;
-  powerpc-*-linux-gnu*)
+  powerpc-*-linux-gnu*|powerpc-*-linux-uclibc*)
      ARCH="powerpc-linux"
      ;;
-  powerpc64-*-linux-gnu*)
+  powerpc64-*-linux-gnu*|powerpc64-*-linux-uclibc*)
      ARCH="powerpc64-linux"
      ;;
   arm*-*-linux-gnu*)
@@ -1174,6 +1174,12 @@ if test "$target_platform" = "target_android" ; then
   AC_CHECK_LIB([log],         [__android_log_vprint],, AC_MSG_ERROR($missing_library))
   AC_CHECK_LIB([jnigraphics],     [main],, AC_MSG_ERROR($missing_library))
 fi
+PKG_CHECK_MODULES([LIBXML], [libxml-2.0],
+  [INCLUDES="$INCLUDES $LIBXML_CFLAGS"; LIBS="$LIBS $LIBXML_LIBS"],
+  AC_MSG_ERROR($missing_library))
+PKG_CHECK_MODULES([LIBXSLT], [libxslt],
+  [INCLUDES="$INCLUDES $LIBXSLT_CFLAGS"; LIBS="$LIBS $LIBXSLT_LIBS"],
+  AC_MSG_ERROR($missing_library))
 PKG_CHECK_MODULES([FRIBIDI],    [fribidi],
   [INCLUDES="$INCLUDES $FRIBIDI_CFLAGS"; LIBS="$LIBS $FRIBIDI_LIBS"],
   AC_MSG_ERROR($missing_library))
@@ -1643,19 +1649,13 @@ fi
 # libshairplay for AirTunes (prefered lib)
 USE_AIRTUNES=0
 if test "x$use_airtunes" != "xno"; then
-  AC_CHECK_HEADERS([shairplay/raop.h],,
-   [if test "x$use_airtunes" = "xyes"; then
-      AC_MSG_ERROR($libshairplay_not_found)
-    elif test "x$use_airtunes" != "xno"; then
-      AC_MSG_NOTICE($libshairplay_not_found)
-      use_airtunes="no"
-    fi
+  AC_CHECK_HEADERS([shairplay/raop.h],USE_AIRTUNES=1,
+   [AC_MSG_NOTICE($libshairplay_not_found)
    ])
 
-  if test "x$use_airtunes" != "xno"; then
-    XB_FIND_SONAME([SHAIRPLAY], [shairplay], [use_airtunes])
-    USE_AIRTUNES=1
-    USE_LIBSHAIRPORT=1
+  if test "x$USE_AIRTUNES" != "x0"; then
+    XB_FIND_SONAME([SHAIRPLAY], [shairplay], [USE_AIRTUNES])
+    USE_LIBSHAIRPLAY=1
     AC_CHECK_MEMBERS([struct raop_callbacks_s.cls],,,
                      [[#include <shairplay/raop.h>]])
     AC_DEFINE([HAVE_LIBSHAIRPLAY],[1],["Define to 1 if you have libshairplay."])
@@ -1663,22 +1663,23 @@ if test "x$use_airtunes" != "xno"; then
 
   #libshairport - as a fallback for AirTunes
   if test "x$USE_AIRTUNES" == "x0"; then
-    AC_CHECK_HEADERS([shairport/shairport.h],,
-     [if test "x$use_airtunes" = "xyes"; then
-        AC_MSG_ERROR($libshairport_not_found)
-      elif test "x$use_airtunes" != "xno"; then
-        AC_MSG_NOTICE($libshairport_not_found)
-        use_airtunes="no"
-      fi
+    AC_CHECK_HEADERS([shairport/shairport.h],USE_AIRTUNES=1,
+     [AC_MSG_NOTICE($libshairport_not_found)
      ])
 
-    if test "x$use_airtunes" != "xno"; then
-      XB_FIND_SONAME([SHAIRPORT], [shairport], [use_airtunes])
-      USE_AIRTUNES=1
+    if test "x$USE_AIRTUNES" != "x0"; then
+      XB_FIND_SONAME([SHAIRPORT], [shairport], [USE_AIRTUNES])
       AC_CHECK_MEMBERS([struct AudioOutput.ao_set_metadata],,,
                        [[#include <shairport/shairport.h>]])
       AC_DEFINE([HAVE_LIBSHAIRPORT],[1],["Define to 1 if you have libshairport."])
     fi
+  fi
+
+  if test "x$USE_AIRTUNES" == "x0"; then
+    if test "x$use_airtunes" == "xyes"; then
+      AC_MSG_ERROR("No airtunes library could be found. (libshairport/libshairplay)")
+    fi
+    use_airtunes="no"
   fi
 fi
 
@@ -2009,16 +2010,19 @@ case $add_players in
 esac
 
 # additional internal codecs
-case $add_codecs in
-  *amcodec*)
-      AC_CHECK_HEADER([amcodec/codec_error.h],, AC_MSG_ERROR($missing_headers))
-      XB_ADD_CODEC([LIBAMCODEC], [amcodec])
-      ;;
-  *libstagefright*)
-      XB_ADD_CODEC([LIBSTAGEFRIGHT], [libstagefright])
-      ;;
-  *)
-esac
+# remember to convert commas to spaces
+for codecs in `echo $add_codecs | sed 's/,/ /g'`; do
+  case $codecs in
+    *amcodec*)
+        AC_CHECK_HEADER([amcodec/codec_error.h],, AC_MSG_ERROR($missing_headers))
+        XB_ADD_CODEC([LIBAMCODEC], [amcodec], [$codecs])
+        ;;
+    *libstagefright*)
+        XB_ADD_CODEC([LIBSTAGEFRIGHT], [libstagefright], [$codecs])
+        ;;
+    *)
+  esac
+done
 
 # platform specific bin utilities
 if test "$build_vendor" != "apple" ; then
@@ -2425,7 +2429,7 @@ else
 fi
 
 if test "x$use_airtunes" != "xno"; then
-  if test "x$USE_LIBSHAIRPORT" == "x1"; then
+  if test "x$USE_LIBSHAIRPLAY" == "x1"; then
     final_message="$final_message\n  AirTunes support (libshairplay):\tYes"  
   else
     final_message="$final_message\n  AirTunes support (libshairport):\tYes"
