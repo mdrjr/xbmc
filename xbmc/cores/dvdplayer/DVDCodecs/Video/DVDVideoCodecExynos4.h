@@ -23,7 +23,6 @@
 #include "DVDVideoCodec.h"
 #include "DVDResource.h"
 #include "utils/BitstreamConverter.h"
-#include "xbmc/linux/LinuxV4l2.h"
 #include <string>
 #include <queue>
 #include <list>
@@ -38,13 +37,10 @@
   #define V4L2_CAP_VIDEO_M2M_MPLANE       0x00004000
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef __cplusplus
-}
-#endif
+class V4L2Buffer;
+namespace V4l2 {
+class Buffers;
+} // namespace V4l2
 
 class CDVDVideoCodecExynos4 : public CDVDVideoCodec
 {
