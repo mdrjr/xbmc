@@ -1,3 +1,4 @@
+CXXFLAGS+=--std=c++11
 INCLUDES+=-I@abs_top_srcdir@/xbmc/cores/dvdplayer
 
 SRCS  = DVDVideoCodecFFmpeg.cpp
@@ -32,11 +33,11 @@ SRCS += DVDVideoCodecExynos5.cpp
 endif
 
 ifeq (@USE_EXYNOS4@,1)
-SRCS += DVDVideoCodecExynos4.cpp
+SRCS += DVDVideoCodecExynos4.cpp DVDVideoCodecExynos.cpp 
 endif
 
 ifeq (@USE_EXYNOS5@,1)
-SRCS += DVDVideoCodecExynos5.cpp
+SRCS += DVDVideoCodecExynos5.cpp DVDVideoCodecExynos.cpp 
 SRCS += deinterleave_chroma.neon.S
 endif
 

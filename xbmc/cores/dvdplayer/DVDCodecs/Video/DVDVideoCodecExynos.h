@@ -1,0 +1,61 @@
+#pragma once
+
+#include "DVDVideoCodec.h"
+#include "DVDStreamInfo.h"
+#include "utils/BitstreamConverter.h"
+
+#include <linux/LinuxV4l2.h>
+
+#include <functional>
+#include <string>
+
+namespace Exynos {
+
+/// Searches for video devices named driverName. Found ones are checked with checker.
+/// Returns file descriptor or -1 if nothing found
+int OpenDevice(const std::string& driverName, std::function<bool(int)> checker);
+
+void deinterleave_chroma_neon(void *u_out, void *v_out, int width_out, void *uv_in, int width_in, int height_in) asm("deinterleave_chroma_neon");
+
+/// Base class for exynos decoders
+class CDVDVideoCodecExynos : public CDVDVideoCodec
+{
+public:
+  CDVDVideoCodecExynos();
+
+  virtual void Reset();
+  virtual void SetDropState(bool bDrop);
+
+  virtual bool GetPicture(DVDVideoPicture* pDvdVideoPicture);
+  virtual bool ClearPicture(DVDVideoPicture* pDvdVideoPicture);
+  virtual const char* GetName();
+
+protected:
+  bool SendHeader(CDVDStreamInfo &hints);
+  bool SetupOutputFormat(CDVDStreamInfo &hints);
+  bool SendBuffer(int bufferIndex, uint8_t *demuxer_content, int demuxer_bytes, double pts);
+  bool SetupCaptureBuffers(int MFCCapturePlane1Size, int MFCCapturePlane2Size);
+
+  V4l2::Buffers m_v4l2MFCOutputBuffers;
+  V4l2::Buffers m_v4l2MFCCaptureBuffers;
+
+  //compressed frame size. 1080p mpeg4 10Mb/s can be un to 786k in size, so this is to make sure frame fits into buffer
+  static const size_t STREAM_BUFFER_SIZE = 786432;
+  // 1 doesn't work at all
+  static const size_t MFC_OUTPUT_BUFFERS_CNT = 2;
+  //these are extra buffers, better keep their count as big as going to be simultaneous dequeued buffers number
+  static const size_t MFC_CAPTURE_EXTRA_BUFFER_CNT = 3;
+
+  int m_decoderHandle;
+
+  bool m_dropPictures;
+  DVDVideoPicture m_videoBuffer;
+
+private:
+  std::string m_name;
+
+  bool m_bVideoConvert;
+  CBitstreamConverter m_converter;
+};
+
+} // namespace Exynos
