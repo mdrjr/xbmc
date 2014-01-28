@@ -1,4 +1,4 @@
-CXXFLAGS += -fPIC
+CXXFLAGS += -fPIC --std=c++11
 
 SRCS  = ConvUtils.cpp
 SRCS += DBusUtil.cpp

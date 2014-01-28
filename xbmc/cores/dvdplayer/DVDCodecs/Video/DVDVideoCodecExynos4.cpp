@@ -515,12 +515,18 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
 
 void CDVDVideoCodecExynos4::Dispose() {
   CLog::Log(LOGDEBUG, "%s::%s - Freeing memory allocated for buffers", CLASSNAME, __func__);
-  if (m_v4l2MFCOutputBuffers)
+  if (m_v4l2MFCOutputBuffers) {
     m_v4l2MFCOutputBuffers = CLinuxV4l2::FreeBuffers(m_MFCOutputBuffersCount, m_v4l2MFCOutputBuffers);
-  if (m_v4l2MFCCaptureBuffers)
+    free(m_v4l2MFCOutputBuffers);
+  }
+  if (m_v4l2MFCCaptureBuffers) {
     m_v4l2MFCCaptureBuffers = CLinuxV4l2::FreeBuffers(m_MFCCaptureBuffersCount, m_v4l2MFCCaptureBuffers);
-  if (m_v4l2FIMCCaptureBuffers)
+    free(m_v4l2MFCCaptureBuffers);
+  }
+  if (m_v4l2FIMCCaptureBuffers) {
     m_v4l2FIMCCaptureBuffers = CLinuxV4l2::FreeBuffers(m_FIMCCaptureBuffersCount, m_v4l2FIMCCaptureBuffers);
+    free(m_v4l2FIMCCaptureBuffers);
+  }
   CLog::Log(LOGDEBUG, "%s::%s - Closing devices", CLASSNAME, __func__);
   if (m_iDecoderHandle >= 0) {
     if (CLinuxV4l2::StreamOn(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, VIDIOC_STREAMOFF))

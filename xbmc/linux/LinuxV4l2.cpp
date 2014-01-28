@@ -34,19 +34,12 @@
 #include <poll.h>
 #include <sys/mman.h>
 #include <linux/media.h>
+#include <cstddef>
 
 #ifdef CLASSNAME
 #undef CLASSNAME
 #endif
 #define CLASSNAME "CLinuxV4l2"
-
-CLinuxV4l2::CLinuxV4l2() 
-{
-}
-
-CLinuxV4l2::~CLinuxV4l2()
-{
-}
 
 int CLinuxV4l2::RequestBuffer(int device, enum v4l2_buf_type type, enum v4l2_memory memory, int numBuffers)
 {
@@ -119,8 +112,6 @@ bool CLinuxV4l2::MmapBuffers(int device, int count, V4L2Buffer *v4l2Buffers, enu
     buffer->iNumPlanes = 0;
     for (j = 0; j < V4L2_NUM_MAX_PLANES; j++) 
     {
-      //printf("%s::%s - plane %d %d size %d 0x%08x\n", CLASSNAME, __func__, i, j, buf.m.planes[j].length,
-      //    buf.m.planes[j].m.userptr);
       buffer->iSize[j]       = buf.m.planes[j].length;
       buffer->iBytesUsed[j]  = buf.m.planes[j].bytesused;
       if(buffer->iSize[j])
@@ -172,7 +163,6 @@ V4L2Buffer *CLinuxV4l2::FreeBuffers(int count, V4L2Buffer *v4l2Buffers)
         }
       }
     }
-    free(v4l2Buffers);
   }
   return NULL;
 }
@@ -199,7 +189,7 @@ int CLinuxV4l2::DequeueBuffer(int device, enum v4l2_buf_type type, enum v4l2_mem
       CLog::Log(LOGERROR, "%s::%s - Dequeue buffer", CLASSNAME, __func__);
     return V4L2_ERROR;
   }
-  
+
   return vbuf.index;
 }
 
@@ -299,3 +289,131 @@ int CLinuxV4l2::SetControllValue(int device, int id, int value)
 
   return V4L2_OK;
 }
+
+namespace V4l2 {
+
+Buffers::Buffers(size_t size, int device, enum v4l2_buf_type type, enum v4l2_memory memory, bool queue) 
+  : device_(device)
+  , type_(type)
+  , memory_(memory)
+{
+  // Request mfc capture buffers
+  size = CLinuxV4l2::RequestBuffer(device_, type_, memory_, size);
+  if (size == V4L2_ERROR) {
+    CLog::Log(LOGERROR, "%s::%s - MFC CAPTURE REQBUFS failed", CLASSNAME, __func__);
+    return;
+  }
+
+  buffers_.resize(size, V4L2Buffer());
+
+  if(!CLinuxV4l2::MmapBuffers(device_, buffers_.size(), &buffers_[0], type_, memory_, queue)) {
+    CLog::Log(LOGERROR, "%s::%s - MFC CAPTURE Cannot mmap memory for buffers", CLASSNAME, __func__);
+    clear();
+  }
+}
+
+Buffers::~Buffers() {
+  clear();
+}
+
+bool Buffers::QueueBuffer(size_t index, const timeval& pts) {
+  if (index >= size()) {
+    return false;
+  }
+  auto& buffer = buffers_[index];
+
+  struct v4l2_plane vplanes[V4L2_NUM_MAX_PLANES] = {};
+  for (int planeIndex = 0; planeIndex < buffer.iNumPlanes; planeIndex++) 
+  {
+    vplanes[planeIndex].m.userptr   = (unsigned long)buffer.cPlane[planeIndex];
+    vplanes[planeIndex].length      = buffer.iSize[planeIndex];
+    vplanes[planeIndex].bytesused   = buffer.iBytesUsed[planeIndex];
+  }
+
+  struct v4l2_buffer vbuf = {};
+  vbuf.type     = type_;
+  vbuf.memory   = memory_;
+  vbuf.index    = index;
+  vbuf.m.planes = vplanes;
+  vbuf.length   = buffer.iNumPlanes;
+  vbuf.timestamp= pts;
+
+  if (ioctl(device_, VIDIOC_QBUF, &vbuf))
+  {
+    CLog::Log(LOGERROR, "%s::%s - Queue buffer", CLASSNAME, __func__);
+    return false;
+  }
+  buffer.bQueue = true;
+
+  return true;
+}
+
+int Buffers::DequeueBuffer(timeval& time, uint32_t& sequence) {
+  struct v4l2_plane  vplanes[V4L2_NUM_MAX_PLANES] = {};
+
+  struct v4l2_buffer vbuf = {};
+  vbuf.type     = type_;
+  vbuf.memory   = memory_;
+  vbuf.m.planes = vplanes;
+  vbuf.length   = V4L2_NUM_MAX_PLANES;
+
+  if (ioctl(device_, VIDIOC_DQBUF, &vbuf)) {
+    if (errno != EAGAIN)
+      CLog::Log(LOGERROR, "%s::%s - Dequeue buffer", CLASSNAME, __func__);
+    return V4L2_ERROR;
+  }
+
+  buffers_[vbuf.index].bQueue = false;
+  time = vbuf.timestamp;
+  sequence = vbuf.sequence;
+
+  return vbuf.index;
+}
+
+int Buffers::FindFreeBuffer(size_t& index) {
+  for (index = 0; index < buffers_.size(); ++index) {
+    if (!buffers_[index].bQueue) {
+      return V4L2_OK;
+    }
+  }
+
+  int ret = CLinuxV4l2::PollOutput(device_, 1000); // POLLIN - Capture, POLLOUT - Output
+  if (ret == V4L2_READY) {
+    timeval time;
+    uint32_t sequence;
+    index = DequeueBuffer(time, sequence);
+    return V4L2_OK;
+  } else if (ret != V4L2_BUSY) {
+    CLog::Log(LOGERROR, "%s::%s - MFC OUTPUT\e[0m PollOutput error %d, errno %d", CLASSNAME, __func__, ret, errno);
+    return V4L2_ERROR;
+  }
+
+  return ret;
+}
+
+bool Buffers::StreamOn() {
+  enum v4l2_buf_type setType = type_;
+  return !ioctl(device_, VIDIOC_STREAMON, &setType);
+}
+
+bool Buffers::StreamOff() {
+  enum v4l2_buf_type setType = type_;
+  return !ioctl(device_, VIDIOC_STREAMOFF, &setType);
+}
+
+void Buffers::clear() {
+  for(auto& buffer : buffers_)
+  {
+    for (size_t i = 0; i < buffer.iNumPlanes; i++)
+    {
+      if(buffer.cPlane[i] && buffer.cPlane[i] != MAP_FAILED)
+      {
+        munmap(buffer.cPlane[i], buffer.iSize[i]);
+        CLog::Log(LOGDEBUG, "%s::%s - unmap convert buffer", CLASSNAME, __func__);
+      }
+    }
+  }
+  buffers_.clear();
+}
+
+} // namespace V4l2
