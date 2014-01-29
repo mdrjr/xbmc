@@ -1781,6 +1781,7 @@ fi
 USE_EXYNOS4=0
 if test "x$use_exynos4" != "xno"; then
   USE_EXYNOS4=1;AC_DEFINE(HAVE_EXYNOS4,[1],["Define if Exynos4 platform hardware decoder is present"])
+  LIBS="$LIBS -lX11"
 fi
 
 USE_EXYNOS5=0

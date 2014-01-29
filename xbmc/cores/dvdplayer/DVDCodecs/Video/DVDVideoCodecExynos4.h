@@ -20,83 +20,68 @@
  *
  */
 
-#include "DVDVideoCodec.h"
+#include "DVDVideoCodecExynos.h"
 #include "DVDResource.h"
 #include "utils/BitstreamConverter.h"
 #include <string>
 #include <queue>
 #include <list>
+#include <atomic>
+#include <mutex>
+#include <thread>
 #include "guilib/GraphicContext.h"
-
-#define STREAM_BUFFER_SIZE            786432 //compressed frame size. 1080p mpeg4 10Mb/s can be un to 786k in size, so this is to make sure frame fits into buffer
-#define FIMC_CAPTURE_BUFFERS_CNT      3 //2 begins to be slow.
-#define MFC_OUTPUT_BUFFERS_CNT        2 //1 doesn't work at all
-#define MFC_CAPTURE_EXTRA_BUFFER_CNT  3 //these are extra buffers, better keep their count as big as going to be simultaneous dequeued buffers number
 
 #ifndef V4L2_CAP_VIDEO_M2M_MPLANE
   #define V4L2_CAP_VIDEO_M2M_MPLANE       0x00004000
 #endif
 
-class V4L2Buffer;
-namespace V4l2 {
-class Buffers;
-} // namespace V4l2
-
-class CDVDVideoCodecExynos4 : public CDVDVideoCodec
+class CDVDVideoCodecExynos4 : public Exynos::CDVDVideoCodecExynos
 {
 public:
   CDVDVideoCodecExynos4();
-  virtual ~CDVDVideoCodecExynos4();
+  ~CDVDVideoCodecExynos4();
+
   virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
   virtual void Dispose();
   virtual int Decode(BYTE* pData, int iSize, double dts, double pts);
-  virtual void Reset();
-  bool GetPictureCommon(DVDVideoPicture* pDvdVideoPicture);
-  virtual bool GetPicture(DVDVideoPicture* pDvdVideoPicture);
-  virtual bool ClearPicture(DVDVideoPicture* pDvdVideoPicture);
-  virtual void SetDropState(bool bDrop);
-  virtual const char* GetName() { return m_name.c_str(); }; // m_name is never changed after open
 
 protected:
-  std::string m_name;
-  unsigned int m_iDecodedWidth;
-  unsigned int m_iDecodedHeight;
+  bool OpenDevices();
+  bool SetupFIMC();
+  bool SetupCaptureFormat(int& MFCCapturePlane1Size, int& MFCCapturePlane2Size);
+  bool GetCaptureCrop();
+  bool ReturnBuffersToMFC();
+  int DequeueBufferFromFIMC();
+  void MFCtoFIMCLoop();
+
+  unsigned int m_iVideoWidth;
+  unsigned int m_iVideoHeight;
   unsigned int m_iConvertedWidth;
   unsigned int m_iConvertedHeight;
-  int m_iDecoderHandle;
-  int m_iConverterHandle;
 
-  int m_MFCOutputBuffersCount;
-  int m_MFCCaptureBuffersCount;
-  int m_FIMCOutputBuffersCount;
-  int m_FIMCCaptureBuffersCount;
+  int m_converterHandle;
 
-  int m_iMFCCapturePlane1Size;
-  int m_iMFCCapturePlane2Size;
+  V4l2::Buffers m_v4l2FIMCOutputBuffers;
+  V4l2::Buffers m_v4l2FIMCCaptureBuffers;
+
   int m_iFIMCCapturePlane1Size;
   int m_iFIMCCapturePlane2Size;
   int m_iFIMCCapturePlane3Size;
 
-  V4L2Buffer *m_v4l2MFCOutputBuffers;
-  V4L2Buffer *m_v4l2MFCCaptureBuffers;
-  V4L2Buffer *m_v4l2FIMCOutputBuffers;
-  V4L2Buffer *m_v4l2FIMCCaptureBuffers;
+  int m_FIMCdequeuedBufferNumber;
+  std::atomic<bool> m_running;
+  std::mutex m_mutex;
+  std::thread m_MFCtoFIMCThread;
+
+  bool m_dataRequested;
   
-  int m_iFIMCdequeuedBufferNumber;
-  
-  bool m_bVideoConvert;
+  // 2 begins to be slow.
+  static const size_t FIMC_CAPTURE_BUFFERS_CNT = 3;
 
-  CBitstreamConverter m_converter;
-
-  std::priority_queue<double> m_pts;
-  std::priority_queue<double> m_dts;
-
-  bool m_bDropPictures;
-
-  DVDVideoPicture   m_videoBuffer;
-  bool m_bFIMCStartConverter;
-
-  bool OpenDevices();
+  // FIMC does not copy timestamp values between buffers
+  double m_pts[FIMC_CAPTURE_BUFFERS_CNT];
+  size_t m_ptsWriteIndex;
+  size_t m_ptsReadIndex;
 };
 
 #define memzero(x) memset(&(x), 0, sizeof (x))
