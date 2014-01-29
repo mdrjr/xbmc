@@ -24,7 +24,6 @@
 #include <hwcomposerwindow/hwcomposer_window.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
-#endif
 
 #include "EGLNativeType.h"
 #include "threads/Thread.h"
@@ -82,3 +81,5 @@ private:
 #endif
   CHybrisVideoRenderer       *m_videoRenderThread;
 };
+
+#endif

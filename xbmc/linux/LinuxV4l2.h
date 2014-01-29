@@ -45,36 +45,24 @@ typedef struct V4L2Buffer
 
 }
 
-class CLinuxV4l2
-{
-public:
-// TODO this block is not needed outside
-  static int RequestBuffer(int device, enum v4l2_buf_type type, enum v4l2_memory memory, int numBuffers);
-  static bool StreamOn(int device, enum v4l2_buf_type type, int onoff);
-  static bool MmapBuffers(int device, int count, V4L2Buffer *v4l2Buffers, enum v4l2_buf_type type, enum v4l2_memory memory, bool queue = true);
-  static V4L2Buffer *FreeBuffers(int count, V4L2Buffer *v4l2Buffers);
-  static int DequeueBuffer(int device, enum v4l2_buf_type type, enum v4l2_memory memory, int planes);
-  static int QueueBuffer(int device, enum v4l2_buf_type type, enum v4l2_memory memory, 
-      int planes, int index, V4L2Buffer *buffer);
-
-// TODO move to namespace
-  static int PollInput(int device, int timeout);
-  static int PollOutput(int device, int timeout);
-  static int SetControllValue(int device, int id, int value);
-};
-
 namespace V4l2 {
+
+int PollInput(int device, int timeout);
+int PollOutput(int device, int timeout);
+int SetControllValue(int device, int id, int value);
 
 /// Convinient class for managing V4L2Buffer buffer array
 class Buffers {
 public:
   // Creates empty buffers
-  Buffers() {}
+  Buffers() : buffers_(&ownedBuffers_) {}
 
-  Buffers(size_t size, int device, enum v4l2_buf_type type, enum v4l2_memory memory, bool queue = true);
+  Buffers(size_t size, int device, enum v4l2_buf_type type, bool queue = true);
+  // Share buffers with another device
+  Buffers(int device, enum v4l2_buf_type type, Buffers& buffers);
 
-  Buffers(Buffers&&) = default;
-  Buffers& operator=(Buffers&&) = default;
+  Buffers(Buffers&&);
+  Buffers& operator=(Buffers&&);
 
   Buffers(const Buffers&) = delete;
   Buffers& operator=(const Buffers&) = delete;
@@ -85,7 +73,7 @@ public:
 
   bool QueueBuffer(size_t index, const timeval& pts = {});
   // Returns dequeued buffer index or V4L2_ERROR in case of error
-  int DequeueBuffer(timeval& time, uint32_t& sequence);
+  int DequeueBuffer(uint32_t& sequence, timeval& time);
   // Searches for unused buffers or dequeues processed ones
   // Returns V4L2_ERROR, V4L2_BUSY or V4L2_OK
   int FindFreeBuffer(size_t& index);
@@ -94,14 +82,15 @@ public:
   bool StreamOff();
 
   // Returns true if buffers are initialized
-  explicit operator bool() {return !buffers_.empty();}
-  size_t size() const {return buffers_.size();}
+  explicit operator bool() {return !buffers_->empty();}
+  size_t size() const {return buffers_->size();}
 
-  V4L2Buffer& operator[](size_t index) {return buffers_[index];}
-  const V4L2Buffer& operator[](size_t index) const {return buffers_[index];}
+  V4L2Buffer& operator[](size_t index) {return (*buffers_)[index];}
+  const V4L2Buffer& operator[](size_t index) const {return (*buffers_)[index];}
 
 private:
-  std::vector<V4L2Buffer> buffers_;
+  std::vector<V4L2Buffer> ownedBuffers_;
+  std::vector<V4L2Buffer>* buffers_;
   int device_;
   enum v4l2_buf_type type_;
   enum v4l2_memory memory_;

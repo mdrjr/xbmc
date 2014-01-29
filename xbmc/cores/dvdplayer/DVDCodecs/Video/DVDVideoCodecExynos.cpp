@@ -10,10 +10,21 @@
 namespace Exynos {
 
 namespace {
-const char* CLASSNAME = "CDVDVideoCodecExynos5";
+const char* CLASSNAME = "CDVDVideoCodecExynos";
 } // namsepace
 
-int OpenDevice(const std::string& driverName, std::function<bool(int)> checker) {
+bool isStreamingDevice(int fd) {
+  struct v4l2_capability cap = {};
+  if (!ioctl(fd, VIDIOC_QUERYCAP, &cap)) {
+    return ((cap.capabilities & V4L2_CAP_VIDEO_M2M_MPLANE ||
+      ((cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE) && (cap.capabilities & V4L2_CAP_VIDEO_OUTPUT_MPLANE))) &&
+      (cap.capabilities & V4L2_CAP_STREAMING));
+  } else {
+    return false;
+  }
+}
+
+int OpenDevice(std::function<bool(const std::string&)> driverSelector, std::function<bool(int)> checker) {
   DIR *dir;
   struct dirent *ent;
 
@@ -30,13 +41,13 @@ int OpenDevice(const std::string& driverName, std::function<bool(int)> checker) 
       file >> currentDriverName;
       file.close();
 
-      if (currentDriverName == driverName) {
+      if (driverSelector(currentDriverName)) {
         int fd = open(("/dev/" + deviceName).c_str(), O_RDWR | O_NONBLOCK, 0);
         if (fd <= 0)
           continue;
 
         if (checker(fd)) {
-          CLog::Log(LOGDEBUG, "%s::%s - Found %s %s", CLASSNAME, __func__, driverName.c_str(), deviceName.c_str());
+          CLog::Log(LOGDEBUG, "%s::%s - Found %s %s", CLASSNAME, __func__, currentDriverName.c_str(), deviceName.c_str());
           closedir (dir);
           return fd;
         }
@@ -49,7 +60,9 @@ int OpenDevice(const std::string& driverName, std::function<bool(int)> checker) 
 }
 
 CDVDVideoCodecExynos::CDVDVideoCodecExynos()
-    : m_bVideoConvert(false)
+    : m_decoderHandle(-1)
+    , m_bVideoConvert(false)
+    , m_videoBuffer()
 {}
 
 bool CDVDVideoCodecExynos::SetupOutputFormat(CDVDStreamInfo &hints) {
@@ -104,7 +117,21 @@ bool CDVDVideoCodecExynos::SetupOutputFormat(CDVDStreamInfo &hints) {
 bool CDVDVideoCodecExynos::SendHeader(CDVDStreamInfo &hints) {
   m_bVideoConvert = m_converter.Open(hints.codec, (uint8_t *)hints.extradata, hints.extrasize, true);
 
-  if (!SendBuffer(0, (uint8_t*)hints.extradata, hints.extrasize, 0.0)) {
+  unsigned int extraSize;
+  uint8_t *extraData;
+  if (m_bVideoConvert) {
+    extraSize = m_converter.GetExtraSize();
+    extraData = m_converter.GetExtraData();
+  } else {
+    extraSize = hints.extrasize;
+    extraData = (uint8_t *)hints.extradata;
+  }
+
+  fast_memcpy((uint8_t *)m_v4l2MFCOutputBuffers[0].cPlane[0], extraData, extraSize);
+  m_v4l2MFCOutputBuffers[0].iBytesUsed[0] = extraSize;
+
+  // Queue header to mfc output queue
+  if (!m_v4l2MFCOutputBuffers.QueueBuffer(0, {})) {
     CLog::Log(LOGERROR, "%s::%s - MFC Error queuing header", CLASSNAME, __func__);
     return false;
   }
@@ -127,7 +154,7 @@ bool CDVDVideoCodecExynos::SendBuffer(int bufferIndex, uint8_t *demuxer_content,
   }
 
   if(demuxer_bytes >= m_v4l2MFCOutputBuffers[bufferIndex].iSize[0]) {
-    CLog::Log(LOGERROR, "%s::%s - Packet to big for streambuffer", CLASSNAME, __func__);
+    CLog::Log(LOGERROR, "%s::%s - Packet to big for streambuffer. Requested: %d Available: %d", CLASSNAME, __func__, demuxer_bytes, m_v4l2MFCOutputBuffers[bufferIndex].iSize[0]);
     return false;
   }
 
@@ -153,7 +180,7 @@ bool CDVDVideoCodecExynos::SetupCaptureBuffers(int MFCCapturePlane1Size, int MFC
   int captureBuffersCount = ctrl.value + MFC_CAPTURE_EXTRA_BUFFER_CNT;
 
   // Allocate, Memory Map and queue mfc capture buffers
-  m_v4l2MFCCaptureBuffers = V4l2::Buffers(captureBuffersCount, m_decoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, V4L2_MEMORY_MMAP, true);
+  m_v4l2MFCCaptureBuffers = V4l2::Buffers(captureBuffersCount, m_decoderHandle, V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE, true);
   if (!m_v4l2MFCCaptureBuffers) {
     return false;
   }

@@ -21,7 +21,6 @@
 #include <hwcomposerwindow/hwcomposer_window.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
-#endif
 
 #include "system.h"
 #include <EGL/egl.h>
@@ -333,3 +332,5 @@ bool CEGLNativeTypeHybris::ShowWindow(bool show)
 void CEGLNativeTypeHybris::SwapSurface(EGLDisplay display, EGLSurface surface)
 {
 }
+
+#endif
