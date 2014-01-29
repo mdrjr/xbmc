@@ -44,7 +44,6 @@ endif
 ifeq (@USE_EXYNOS4@,1)
 SRCS += DVDVideoCodecExynos4.cpp DVDVideoCodecExynos.cpp 
 endif
-
 ifeq (@USE_EXYNOS5@,1)
 SRCS += DVDVideoCodecExynos5.cpp DVDVideoCodecExynos.cpp 
 SRCS += deinterleave_chroma.neon.S

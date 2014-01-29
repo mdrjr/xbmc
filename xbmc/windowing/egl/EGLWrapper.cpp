@@ -87,7 +87,6 @@ bool CEGLWrapper::Initialize(const std::string &implementation)
       (nativeGuess = CreateEGLNativeType<CEGLNativeTypeRaspberryPI>(implementation)))
   {
     m_nativeTypes = nativeGuess;
-
     m_nativeTypes->Initialize();
     return true;
   }
