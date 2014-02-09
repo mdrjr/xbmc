@@ -193,14 +193,27 @@ struct SinkInfoStruct
 {
   AEDeviceInfoList *list;
   bool isHWDevice;
+  bool device_found;
   pa_threaded_mainloop *mainloop;
+  SinkInfoStruct()
+  {
+    list = NULL;
+    isHWDevice = false;
+    device_found = true;
+    mainloop = NULL;
+  }
 };
 
 static void SinkInfoCallback(pa_context *c, const pa_sink_info *i, int eol, void *userdata)
 {
   SinkInfoStruct *sinkStruct = (SinkInfoStruct *)userdata;
-  if (i && i->flags && (i->flags & PA_SINK_HARDWARE))
-    sinkStruct->isHWDevice = true;
+  if(i)
+  {
+    if (i->flags && (i->flags & PA_SINK_HARDWARE))
+      sinkStruct->isHWDevice = true;
+
+    sinkStruct->device_found = true;
+  }
   pa_threaded_mainloop_signal(sinkStruct->mainloop, 0);
 }
 
@@ -269,7 +282,10 @@ static pa_channel_map AEChannelMapToPAChannel(CAEChannelInfo info)
   {
     pos = AEChannelToPAChannel(info[i]);
     if(pos != PA_CHANNEL_POSITION_INVALID)
-      map.channels++;
+    {
+      // remember channel name and increase channel count
+      map.map[map.channels++] = pos;
+    }
   }
   return map;
 }
@@ -306,7 +322,7 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
     defaultDevice.m_deviceType = AE_DEVTYPE_PCM;
     sinkStruct->list->push_back(defaultDevice);
   }
-
+  bool valid = true;
   if (i && i->name)
   {
     CAEDeviceInfo device;
@@ -320,6 +336,11 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
     unsigned int device_type = AE_DEVTYPE_PCM; //0
 
     device.m_channels = PAChannelToAEChannelMap(i->channel_map);
+
+    // Don't add devices that would not have a channel map
+    if(device.m_channels.Count() == 0)
+      valid = false;
+
     device.m_sampleRates.assign(defaultSampleRates, defaultSampleRates + sizeof(defaultSampleRates) / sizeof(defaultSampleRates[0]));
 
     for (unsigned int j = 0; j < i->n_formats; j++)
@@ -350,9 +371,15 @@ static void SinkInfoRequestCallback(pa_context *c, const pa_sink_info *i, int eo
       device.m_deviceType = AE_DEVTYPE_IEC958;
     else
       device.m_deviceType = AE_DEVTYPE_PCM;
-
-    CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
-    sinkStruct->list->push_back(device);
+    if(valid)
+    {
+      CLog::Log(LOGDEBUG, "PulseAudio: Found %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
+      sinkStruct->list->push_back(device);
+    }
+    else
+    {
+      CLog::Log(LOGDEBUG, "PulseAudio: Skipped %s with devicestring %s", device.m_displayName.c_str(), device.m_deviceName.c_str());
+    }
  }
   pa_threaded_mainloop_signal(sinkStruct->mainloop, 0);
 }
@@ -387,7 +414,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
 
   if (!SetupContext(NULL, &m_Context, &m_MainLoop))
   {
-    CLog::Log(LOGERROR, "PulseAudio: Failed to create context");
+    CLog::Log(LOGNOTICE, "PulseAudio might not be running. Context was not created.");
     Deinitialize();
     return false;
   }
@@ -419,14 +446,33 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   info[0] = pa_format_info_new();
   info[0]->encoding = AEFormatToPulseEncoding(format.m_dataFormat);
   if(!passthrough)
+  {
     pa_format_info_set_sample_format(info[0], AEFormatToPulseFormat(format.m_dataFormat));
+    pa_format_info_set_channel_map(info[0], &map);
+  }
   pa_format_info_set_channels(info[0], m_Channels);
-  unsigned int samplerate = passthrough ? format.m_encodedRate : format.m_sampleRate;
+
+  // PA requires m_encodedRate in order to do EAC3
+  unsigned int samplerate;
+  if (passthrough)
+  {
+    if (format.m_encodedRate == 0)
+    {
+      CLog::Log(LOGNOTICE, "PulseAudio: Passthrough in use but m_encodedRate is not set - fallback to m_sampleRate");
+      samplerate = format.m_sampleRate;
+    }
+    else
+      samplerate = format.m_encodedRate;
+  }
+  else
+    samplerate = format.m_sampleRate;
+
   pa_format_info_set_rate(info[0], samplerate);
 
   if (!pa_format_info_valid(info[0]))
   {
     CLog::Log(LOGERROR, "PulseAudio: Invalid format info");
+    pa_format_info_free(info[0]);
     pa_threaded_mainloop_unlock(m_MainLoop);
     Deinitialize();
     return false;
@@ -434,7 +480,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
 
   pa_sample_spec spec;
   #if PA_CHECK_VERSION(2,0,0)
-    pa_format_info_to_sample_spec(info[0], &spec, &map);
+    pa_format_info_to_sample_spec(info[0], &spec, NULL);
   #else
     spec.rate = (AEFormatToPulseEncoding(format.m_dataFormat) == PA_ENCODING_EAC3_IEC61937) ? 4 * samplerate : samplerate;
     spec.format = AEFormatToPulseFormat(format.m_dataFormat);
@@ -443,6 +489,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   if (!pa_sample_spec_valid(&spec))
   {
     CLog::Log(LOGERROR, "PulseAudio: Invalid sample spec");
+    pa_format_info_free(info[0]);
     pa_threaded_mainloop_unlock(m_MainLoop);
     Deinitialize();
     return false;
@@ -472,8 +519,23 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   SinkInfoStruct sinkStruct;
   sinkStruct.mainloop = m_MainLoop;
   sinkStruct.isHWDevice = false;
+  sinkStruct.device_found = true; // needed to get default device opened
+
   if (!isDefaultDevice)
+  {
+    // we need to check if the device we want to open really exists
+    // default device is handled in a special manner
+    sinkStruct.device_found = false; // if sink is valid it will be set true in pa_context_get_sink_info_by_name
     WaitForOperation(pa_context_get_sink_info_by_name(m_Context, device.c_str(),SinkInfoCallback, &sinkStruct), m_MainLoop, "Get Sink Info");
+  }
+
+  if(!sinkStruct.device_found) // ActiveAE will open us again with a valid device name
+  {
+    CLog::Log(LOGERROR, "PulseAudio: Sink %s not found", device.c_str());
+    pa_threaded_mainloop_unlock(m_MainLoop);
+    Deinitialize();
+    return false;
+  }
 
   // 200ms max latency
   // 50ms min packet size
@@ -516,7 +578,12 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   const pa_buffer_attr *a;
 
   if (!(a = pa_stream_get_buffer_attr(m_Stream)))
-      CLog::Log(LOGERROR, "PulseAudio: %s", pa_strerror(pa_context_errno(m_Context)));
+  {
+    CLog::Log(LOGERROR, "PulseAudio: %s", pa_strerror(pa_context_errno(m_Context)));
+    pa_threaded_mainloop_unlock(m_MainLoop);
+    Deinitialize();
+    return false;
+  }
   else
   {
     unsigned int packetSize = a->minreq;
@@ -664,7 +731,7 @@ void CAESinkPULSE::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)
 
   if (!SetupContext(NULL, &context, &mainloop))
   {
-    CLog::Log(LOGERROR, "PulseAudio: Failed to create context");
+    CLog::Log(LOGNOTICE, "PulseAudio might not be running. Context was not created.");
     return;
   }
 

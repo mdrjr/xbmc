@@ -662,20 +662,6 @@ bool CDVDPlayer::OpenInputStream()
     m_filename = g_mediaManager.TranslateDevicePath("");
   }
 
-  // before creating the input stream, if this is an HLS playlist then get the
-  // most appropriate bitrate based on our network settings
-  // ensure to strip off the url options by using a temp CURL object
-  if (StringUtils::StartsWith(filename, "http://") &&
-      StringUtils::EndsWith(CURL(filename).GetFileName(), ".m3u8"))
-  {
-    // get the available bandwidth (as per user settings)
-    int maxrate = CSettings::Get().GetInt("network.bandwidth");
-    if(maxrate <= 0)
-      maxrate = INT_MAX;
-
-    // determine the most appropriate stream
-    m_filename = PLAYLIST::CPlayListM3U::GetBestBandwidthStream(m_filename, (size_t)maxrate);
-  }
   m_pInputStream = CDVDFactoryInputStream::CreateInputStream(this, m_filename, m_mimetype);
   if(m_pInputStream == NULL)
   {
@@ -1040,11 +1026,13 @@ void CDVDPlayer::Process()
   if (CDVDInputStream::IMenus* ptr = dynamic_cast<CDVDInputStream::IMenus*>(m_pInputStream))
   {
     CLog::Log(LOGNOTICE, "DVDPlayer: playing a file with menu's");
-    m_PlayerOptions.starttime = 0;
+    CDVDInputStreamNavigator* nav = dynamic_cast<CDVDInputStreamNavigator*>(m_pInputStream);
+    if(nav)
+      m_PlayerOptions.starttime = 0;
 
     if(m_PlayerOptions.state.size() > 0)
       ptr->SetState(m_PlayerOptions.state);
-    else if(CDVDInputStreamNavigator* nav = dynamic_cast<CDVDInputStreamNavigator*>(m_pInputStream))
+    else if(nav)
       nav->EnableSubtitleStream(CMediaSettings::Get().GetCurrentVideoSettings().m_SubtitleOn);
 
     CMediaSettings::Get().GetCurrentVideoSettings().m_SubtitleCached = true;
@@ -3432,6 +3420,12 @@ int CDVDPlayer::OnDVDNavResult(void* pData, int iMessage)
                   m_dvd.iDVDStillTime, time / 1000);
       }
     }
+    else if (iMessage == 6)
+    {
+      m_dvd.state = DVDSTATE_NORMAL;
+      CLog::Log(LOGDEBUG, "CDVDPlayer::OnDVDNavResult - libbluray read error (DVDSTATE_NORMAL)");
+      CGUIDialogKaiToast::QueueNotification(g_localizeStrings.Get(25008), g_localizeStrings.Get(25009));
+    }
 
     return 0;
   }
@@ -3868,7 +3862,7 @@ bool CDVDPlayer::HasMenu()
 {
   CDVDInputStream::IMenus* pStream = dynamic_cast<CDVDInputStream::IMenus*>(m_pInputStream);
   if (pStream)
-    return true;
+    return pStream->HasMenu();
   else
     return false;
 }
@@ -4071,6 +4065,11 @@ void CDVDPlayer::UpdatePlayState(double timeout)
     state.dts = m_CurrentVideo.dts;
   else if(m_CurrentAudio.dts != DVD_NOPTS_VALUE)
     state.dts = m_CurrentAudio.dts;
+  else if(m_CurrentVideo.startpts != DVD_NOPTS_VALUE)
+    state.dts = m_CurrentVideo.startpts;
+  else if(m_CurrentAudio.startpts != DVD_NOPTS_VALUE)
+    state.dts = m_CurrentAudio.startpts;
+
 
   if(m_pDemuxer)
   {

@@ -1,6 +1,6 @@
 #pragma once
 /*
- *      Copyright (C) 2005-2013 Team XBMC
+ *      Copyright (C) 2013 Team XBMC
  *      http://xbmc.org
  *
  *  This Program is free software; you can redistribute it and/or modify
@@ -19,17 +19,15 @@
  *
  */
 
-#include "ImusicInfoTagLoader.h"
+#include "JNIBase.h"
 
-namespace MUSIC_INFO
-{
-
-class CMusicInfoTagLoaderWAV: public IMusicInfoTagLoader
+class CJNIURI;
+class CJNIKeyCharacterMap : public CJNIBase
 {
 public:
-  CMusicInfoTagLoaderWAV(void);
-  virtual ~CMusicInfoTagLoaderWAV();
+  CJNIKeyCharacterMap(const jni::jhobject &object) : CJNIBase(object) {}
+  ~CJNIKeyCharacterMap() {}
 
-  virtual bool Load(const CStdString& strFileName, CMusicInfoTag& tag, EmbeddedArt *art = NULL);
+  static CJNIKeyCharacterMap load(int deviceId);
+  int get(int keyCode, int metaState);
 };
-}

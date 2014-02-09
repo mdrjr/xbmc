@@ -2630,7 +2630,8 @@ bool CApplication::OnAction(const CAction &action)
 
   // Now check with the player if action can be handled.
   if (g_windowManager.GetActiveWindow() == WINDOW_FULLSCREEN_VIDEO ||
-      (g_windowManager.GetActiveWindow() == WINDOW_DIALOG_VIDEO_OSD && (action.GetID() == ACTION_NEXT_ITEM || action.GetID() == ACTION_PREV_ITEM || action.GetID() == ACTION_CHANNEL_UP || action.GetID() == ACTION_CHANNEL_DOWN)))
+      (g_windowManager.GetActiveWindow() == WINDOW_DIALOG_VIDEO_OSD && (action.GetID() == ACTION_NEXT_ITEM || action.GetID() == ACTION_PREV_ITEM || action.GetID() == ACTION_CHANNEL_UP || action.GetID() == ACTION_CHANNEL_DOWN)) ||
+      action.GetID() == ACTION_STOP)
   {
     if (m_pPlayer->OnAction(action))
       return true;
@@ -3478,12 +3479,12 @@ void CApplication::Stop(int exitCode)
 
     CApplicationMessenger::Get().Cleanup();
 
+    CLog::Log(LOGNOTICE, "stop player");
+    m_pPlayer->ClosePlayer();
+
     StopPVRManager();
     StopServices();
     //Sleep(5000);
-
-    CLog::Log(LOGNOTICE, "stop player");
-    m_pPlayer->ClosePlayer();
 
 #if HAS_FILESYTEM_DAAP
     CLog::Log(LOGNOTICE, "stop daap clients");
@@ -5213,6 +5214,14 @@ const CStdString& CApplication::CurrentFile()
 CFileItem& CApplication::CurrentFileItem()
 {
   return *m_itemCurrentFile;
+}
+
+CFileItem& CApplication::CurrentUnstackedItem()
+{
+  if (m_itemCurrentFile->IsStack() && m_currentStack->Size() > 0)
+    return *(*m_currentStack)[m_currentStackPosition];
+  else
+    return *m_itemCurrentFile;
 }
 
 void CApplication::ShowVolumeBar(const CAction *action)

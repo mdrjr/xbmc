@@ -55,7 +55,7 @@ void CAESinkPi::SetAudioDest()
   OMX_ERRORTYPE omx_err   = OMX_ErrorNone;
   OMX_CONFIG_BRCMAUDIODESTINATIONTYPE audioDest;
   OMX_INIT_STRUCTURE(audioDest);
-  if (CSettings::Get().GetString("audiooutput.audiodevice") == "Pi:Analogue")
+  if (CSettings::Get().GetString("audiooutput.audiodevice") == "PI:Analogue")
     strncpy((char *)audioDest.sName, "local", strlen("local"));
   else
     strncpy((char *)audioDest.sName, "hdmi", strlen("hdmi"));
@@ -66,6 +66,19 @@ void CAESinkPi::SetAudioDest()
 
 bool CAESinkPi::Initialize(AEAudioFormat &format, std::string &device)
 {
+  char response[80];
+  /* if we are raw need to let gpu know */
+  if (AE_IS_RAW(format.m_dataFormat))
+  {
+    vc_gencmd(response, sizeof response, "hdmi_stream_channels 1");
+    m_passthrough = true;
+  }
+  else
+  {
+    vc_gencmd(response, sizeof response, "hdmi_stream_channels 0");
+    m_passthrough = false;
+  }
+
   m_initDevice = device;
   m_initFormat = format;
   // setup for a 50ms sink feed from SoftAE
