@@ -51,6 +51,8 @@ private:
   unsigned int m_iOutputHeight;
 
   V4L2Buffer m_v4l2OutputBuffer;
+  int m_MFCDequeuedBufferNumber;
+  bool m_dataRequested;
   
   // Order number of previous frame
   uint32_t m_sequence;

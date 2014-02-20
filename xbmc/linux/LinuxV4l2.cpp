@@ -312,7 +312,7 @@ int Buffers::FindFreeBuffer(size_t& index) {
     }
   }
 
-  int ret = PollOutput(device_, 0); // POLLIN - Capture, POLLOUT - Output
+  int ret = PollOutput(device_, 1000); // POLLIN - Capture, POLLOUT - Output
   if (ret == V4L2_READY) {
     timeval time;
     uint32_t sequence;
