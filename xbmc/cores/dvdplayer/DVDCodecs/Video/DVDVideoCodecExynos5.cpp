@@ -50,6 +50,8 @@
 #include <poll.h>
 #include <sys/mman.h>
 
+#include <iostream>
+
 #ifdef CLASSNAME
 #undef CLASSNAME
 #endif
@@ -147,6 +149,8 @@ bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &/*opti
     return false;
   }
 
+  m_MFCDequeuedBufferNumber = -1;
+  m_dataRequested = false;
   m_framesToSkip = 0;
   m_missedFrames = 0;
   m_inputSequence = 0;
@@ -179,8 +183,6 @@ bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &/*opti
 
 void CDVDVideoCodecExynos5::Dispose() {
   CLog::Log(LOGDEBUG, "%s::%s - Freeing memory allocated for buffers", CLASSNAME, __func__);
-  m_v4l2MFCOutputBuffers.clear();
-  m_v4l2MFCCaptureBuffers.clear();
 
   CLog::Log(LOGDEBUG, "%s::%s - Closing devices", CLASSNAME, __func__);
   if (m_decoderHandle >= 0) {
@@ -188,14 +190,18 @@ void CDVDVideoCodecExynos5::Dispose() {
       CLog::Log(LOGDEBUG, "%s::%s - MFC OUTPUT Stream OFF", CLASSNAME, __func__);
     if (m_v4l2MFCCaptureBuffers.StreamOff())
       CLog::Log(LOGDEBUG, "%s::%s - MFC CAPTURE Stream OFF", CLASSNAME, __func__);
+
+    m_v4l2MFCOutputBuffers.clear();
+    m_v4l2MFCCaptureBuffers.clear();
+
     close(m_decoderHandle);
+    m_decoderHandle = -1;
   }
 
   m_iVideoWidth = 0;
   m_iVideoHeight = 0;
   m_iOutputWidth = 0;
   m_iOutputHeight = 0;
-  m_decoderHandle = -1;
   m_dropPictures = false;
 
   memzero(m_v4l2OutputBuffer);
@@ -242,75 +248,107 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
     return VC_ERROR;
   }
 
-//std::cout << "DEC " << dts << ", " << pts << "\n";
-//  unsigned int dtime = XbmcThreads::SystemClockMillis();
-
   if(pData) {
-	// Find buffer ready to be filled
     size_t index;
-    int ret = m_v4l2MFCOutputBuffers.FindFreeBuffer(index);
-    if (ret == V4L2_ERROR) {
-      return VC_ERROR;
-    } else if (ret == V4L2_BUSY) { // buffer is still busy
+    for (index = 0; index < m_v4l2MFCOutputBuffers.size(); ++index) {
+      if (!m_v4l2MFCOutputBuffers[index].bQueue) {
+        break;
+      }
+    }
+    if (index == m_v4l2MFCOutputBuffers.size()) {
       CLog::Log(LOGERROR, "%s::%s - MFC OUTPUT All buffers are queued and busy, no space for new frame to decode. Very broken situation.", CLASSNAME, __func__);
       /* FIXME This should be handled as abnormal situation that should be addressed, otherwise decoding will stuck here forever */
       return VC_FLUSHED;
     }
-
     if (!SendBuffer(index, pData, iSize, pts)) {
         return VC_ERROR;
     }
+
     ++m_inputSequence;
   }
 
-  // Dequeue decoded frame
-  size_t index = 0;
-  timeval ptsTime;
-  uint32_t sequence;
-  index = m_v4l2MFCCaptureBuffers.DequeueBuffer(ptsTime, sequence);
-
-  if (index < 0) {
-    if (errno == EAGAIN) // Buffer is still busy, queue more
-      return VC_BUFFER;
-    CLog::Log(LOGERROR, "%s::%s - MFC CAPTURE error dequeue output buffer, got number %d, errno %d", CLASSNAME, __func__, int(index), errno);
-    return VC_ERROR;
-  }
-
-  // This is a kludge for broken interlaced video. If field order is not appropriate MFC would enter into broken state and would output garbage.
-  // Skipping fields would not help. Full reinitialization is needed.
-  m_missedFrames += sequence - m_sequence - 1;
-  if (m_missedFrames > 5) {
-      CLog::Log(LOGERROR, "%s::%s - MFC fails to decode interlaced video if fields are not in proper order. Reinitializing MFC.", CLASSNAME, __func__);
-
-      Dispose();
-      CDVDCodecOptions options;
-      Open(m_hints, options);
-
-      m_framesToSkip = m_inputSequence && 1 ? 0 : 1;
-      CLog::Log(LOGERROR, "%s::%s - MFC continuing decoding", CLASSNAME, __func__);
+  if (m_MFCDequeuedBufferNumber >= 0) {
+    // Queue dequeued buffer back to MFC CAPTURE
+    if (!m_v4l2MFCCaptureBuffers.QueueBuffer(m_MFCDequeuedBufferNumber)) {
+      CLog::Log(LOGERROR, "%s::%s - MFC CAPTURE Failed to queue buffer with index %d", CLASSNAME, __func__, m_MFCDequeuedBufferNumber);
       return VC_ERROR;
-  }
-  m_sequence = sequence;
-
-  if (m_dropPictures) {
-    m_videoBuffer.iFlags      |= DVP_FLAG_DROPPED;
-    CLog::Log(LOGDEBUG, "%s::%s - Dropping frame with index %d", CLASSNAME, __func__, index);
-  } else {
-    PrepareOutputBuffer(index);
+    }
+    m_MFCDequeuedBufferNumber = -1;
   }
 
-  m_videoBuffer.pts = (ptsTime.tv_sec + double(ptsTime.tv_usec)/1000); 
-  m_videoBuffer.dts = m_videoBuffer.pts;
+  // Fill up MFC buffer if there is any space.
+  // XBMC would give us null pData if we previously returned VC_BUFFER
+  // only if no more data available. In this case just continue decoding.
+  if (!(m_dataRequested && !pData)) {
+    for (size_t index = 0; index < m_v4l2MFCOutputBuffers.size(); ++index) {
+      if (!m_v4l2MFCOutputBuffers[index].bQueue) {
+        // We have free buffer, ask XBMC for new frame
+        m_dataRequested = true;
+        return VC_BUFFER;
+      }
+    }
+  }
+
+  for (;;) {
+// FIXME This code is commented out because for some reason I don't get POLLIN events.
+/*    struct pollfd pollRequest = {
+        m_decoderHandle,
+        POLLIN | POLLOUT | POLLERR
+      };
+    if (poll(&pollRequest, 1, 1000) < 0) {
+        CLog::Log(LOGERROR, "%s::%s - Polling output", CLASSNAME, __func__);
+        return VC_ERROR;
+    }*/
+
+    if (/*(pollRequest.revents & POLLOUT) && */!(m_dataRequested && !pData)) {
+      timeval time;
+      uint32_t sequence;
+      if (m_v4l2MFCOutputBuffers.DequeueBuffer(sequence, time) >= 0) {
+        m_dataRequested = true;
+        return VC_BUFFER;
+      }
+    }
+    m_dataRequested = false;
+
+    /*if (pollRequest.revents & POLLIN)*/ {
+      // Dequeue decoded frame
+      uint32_t sequence;
+      timeval ptsTime;
+      m_MFCDequeuedBufferNumber = m_v4l2MFCCaptureBuffers.DequeueBuffer(sequence, ptsTime);
+      if (m_MFCDequeuedBufferNumber < 0) {
+        continue;
+        if (errno == EAGAIN) { // Buffer is still busy, queue more
+          m_dataRequested = true;
+          return VC_BUFFER;
+        }
+        CLog::Log(LOGERROR, "%s::%s - MFC CAPTURE error dequeue output buffer, got number %d, errno %d", CLASSNAME, __func__, int(m_MFCDequeuedBufferNumber), errno);
+        return VC_ERROR;
+      }
+
+      // This is a kludge for broken interlaced video. If field order is not appropriate MFC would enter into broken state and would output garbage.
+      // Skipping fields would not help. Full reinitialization is needed.
+      m_missedFrames += sequence - m_sequence - 1;
+      if (m_missedFrames > 5) {
+        CLog::Log(LOGERROR, "%s::%s - MFC fails to decode interlaced video if fields are not in proper order. Reinitializing MFC.", CLASSNAME, __func__);
+
+        Dispose();
+        CDVDCodecOptions options;
+        // FIXME Should shutdown completely if it fails
+        Open(m_hints, options);
+
+        m_framesToSkip = m_inputSequence & 1 ? 0 : 1;
+        CLog::Log(LOGERROR, "%s::%s - MFC continuing decoding", CLASSNAME, __func__);
+        m_dataRequested = true;
+        return VC_BUFFER;
+      }
+      m_sequence = sequence;
+
+      PrepareOutputBuffer(m_MFCDequeuedBufferNumber);
+
+      m_videoBuffer.pts = (ptsTime.tv_sec + double(ptsTime.tv_usec)/1000); 
+      m_videoBuffer.dts = m_videoBuffer.pts;
     
-  // Queue dequeued buffer back to MFC CAPTURE
-  if (!m_v4l2MFCCaptureBuffers.QueueBuffer(index)) {
-    CLog::Log(LOGERROR, "%s::%s - queue output buffer\n", CLASSNAME, __func__);
-    m_videoBuffer.iFlags      |= DVP_FLAG_DROPPED;
-    m_videoBuffer.iFlags      &= DVP_FLAG_ALLOCATED;
-    return VC_ERROR;
+      return VC_PICTURE; // Picture is finally ready to be processed further
+    }
   }
-
-//  msg("Decode time: %d", XbmcThreads::SystemClockMillis() - dtime);
-  
-  return VC_PICTURE; // Picture is finally ready to be processed further
 }

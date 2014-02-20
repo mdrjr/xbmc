@@ -290,18 +290,16 @@ void CDVDVideoCodecExynos4::Dispose() {
     // Thread was probably not started
   }
 
-  CLog::Log(LOGDEBUG, "%s::%s - Freeing memory allocated for buffers", CLASSNAME, __func__);
-  m_v4l2MFCOutputBuffers.clear();
-  m_v4l2MFCCaptureBuffers.clear();
-  m_v4l2FIMCOutputBuffers.clear();
-  m_v4l2FIMCCaptureBuffers.clear();
-
   CLog::Log(LOGDEBUG, "%s::%s - Closing devices", CLASSNAME, __func__);
   if (m_decoderHandle >= 0) {
     if (m_v4l2MFCOutputBuffers.StreamOff())
       CLog::Log(LOGDEBUG, "%s::%s - MFC OUTPUT Stream OFF", CLASSNAME, __func__);
     if (m_v4l2MFCCaptureBuffers.StreamOff())
       CLog::Log(LOGDEBUG, "%s::%s - MFC CAPTURE Stream OFF", CLASSNAME, __func__);
+
+    m_v4l2MFCOutputBuffers.clear();
+    m_v4l2MFCCaptureBuffers.clear();
+
     close(m_decoderHandle);
   }
   if (m_converterHandle >= 0) {
@@ -309,6 +307,10 @@ void CDVDVideoCodecExynos4::Dispose() {
       CLog::Log(LOGDEBUG, "%s::%s - FIMC OUTPUT Stream OFF", CLASSNAME, __func__);
     if (m_v4l2FIMCCaptureBuffers.StreamOff())
       CLog::Log(LOGDEBUG, "%s::%s - FIMC CAPTURE Stream OFF", CLASSNAME, __func__);
+
+    m_v4l2FIMCOutputBuffers.clear();
+    m_v4l2FIMCCaptureBuffers.clear();
+
     close(m_converterHandle);
   }
 
