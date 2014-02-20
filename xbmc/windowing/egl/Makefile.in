@@ -4,7 +4,10 @@ SRCS = WinSystemEGL.cpp
 SRCS+= EGLNativeTypeAmlogic.cpp
 SRCS+= EGLNativeTypeAndroid.cpp
 SRCS+= EGLNativeTypeRaspberryPI.cpp
+ifeq (@USE_EXYNOS4@,1)
 SRCS+= EGLNativeTypeOdroid.cpp
+endif
+SRCS+= EGLNativeTypeHybris.cpp
 SRCS+= EGLWrapper.cpp
 
 LIB = windowing_egl.a

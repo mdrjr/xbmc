@@ -21,15 +21,14 @@
  */
 
 #include <linux/videodev2.h>
+#include <vector>
 
 #define V4L2_ERROR -1
 #define V4L2_BUSY  1
 #define V4L2_READY 2
 #define V4L2_OK    3
 
-#ifdef __cplusplus
 extern "C" {
-#endif
 
 #define V4L2_NUM_MAX_PLANES 3
 
@@ -44,31 +43,56 @@ typedef struct V4L2Buffer
   bool  bQueue;
 } V4L2Buffer;
 
-#ifdef __cplusplus
 }
-#endif
 
-class CLinuxV4l2
-{
+namespace V4l2 {
+
+int PollInput(int device, int timeout);
+int PollOutput(int device, int timeout);
+int SetControllValue(int device, int id, int value);
+
+/// Convinient class for managing V4L2Buffer buffer array
+class Buffers {
 public:
-  CLinuxV4l2();
-  virtual ~CLinuxV4l2();
+  // Creates empty buffers
+  Buffers() : buffers_(&ownedBuffers_) {}
 
-  static int RequestBuffer(int device, enum v4l2_buf_type type, enum v4l2_memory memory, int numBuffers);
-  static bool StreamOn(int device, enum v4l2_buf_type type, int onoff);
-  static bool MmapBuffers(int device, int count, V4L2Buffer *v4l2Buffers, enum v4l2_buf_type type, enum v4l2_memory memory, bool queue = true);
-  static V4L2Buffer *FreeBuffers(int count, V4L2Buffer *v4l2Buffers);
+  Buffers(size_t size, int device, enum v4l2_buf_type type, bool queue = true);
+  // Share buffers with another device
+  Buffers(int device, enum v4l2_buf_type type, Buffers& buffers);
 
-  static int DequeueBuffer(int device, enum v4l2_buf_type type, enum v4l2_memory memory, int planes);
-  static int QueueBuffer(int device, enum v4l2_buf_type type, enum v4l2_memory memory, 
-      int planes, int index, V4L2Buffer *buffer);
+  Buffers(Buffers&&);
+  Buffers& operator=(Buffers&&);
 
-  static int PollInput(int device, int timeout);
-  static int PollOutput(int device, int timeout);
-  static int SetControllValue(int device, int id, int value);
+  Buffers(const Buffers&) = delete;
+  Buffers& operator=(const Buffers&) = delete;
+
+  ~Buffers();
+
+  void clear();
+
+  bool QueueBuffer(size_t index, const timeval& pts = {});
+  // Returns dequeued buffer index or V4L2_ERROR in case of error
+  int DequeueBuffer(uint32_t& sequence, timeval& time);
+  // Searches for unused buffers or dequeues processed ones
+  // Returns V4L2_ERROR, V4L2_BUSY or V4L2_OK
+  int FindFreeBuffer(size_t& index);
+
+  bool StreamOn();
+  bool StreamOff();
+
+  // Returns true if buffers are initialized
+  explicit operator bool() {return !buffers_->empty();}
+  size_t size() const {return buffers_->size();}
+
+  V4L2Buffer& operator[](size_t index) {return (*buffers_)[index];}
+  const V4L2Buffer& operator[](size_t index) const {return (*buffers_)[index];}
+
+private:
+  std::vector<V4L2Buffer> ownedBuffers_;
+  std::vector<V4L2Buffer>* buffers_;
+  int device_;
+  enum v4l2_buf_type type_;
+  enum v4l2_memory memory_;
 };
-
-inline int v4l2_align(int v, int a) {
-  return ((v + a - 1) / a) * a;
-}
-
+} // namespace V4l2

@@ -22,66 +22,51 @@
 
 #include "DVDVideoCodecExynos.h"
 #include "DVDResource.h"
+#include "DVDStreamInfo.h"
 #include "utils/BitstreamConverter.h"
+#include <linux/LinuxV4l2.h>
+
 #include <string>
-#include <queue>
-#include <list>
-#include <atomic>
-#include <mutex>
-#include <thread>
 #include "guilib/GraphicContext.h"
 
 #ifndef V4L2_CAP_VIDEO_M2M_MPLANE
   #define V4L2_CAP_VIDEO_M2M_MPLANE       0x00004000
 #endif
 
-class CDVDVideoCodecExynos4 : public Exynos::CDVDVideoCodecExynos
+class CDVDVideoCodecExynos5 : public Exynos::CDVDVideoCodecExynos
 {
 public:
-  CDVDVideoCodecExynos4();
-  ~CDVDVideoCodecExynos4();
+  CDVDVideoCodecExynos5();
+  ~CDVDVideoCodecExynos5();
 
   virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
   virtual void Dispose();
   virtual int Decode(BYTE* pData, int iSize, double dts, double pts);
 
-protected:
-  bool OpenDevices();
-  bool SetupFIMC();
-  bool SetupCaptureFormat(int& MFCCapturePlane1Size, int& MFCCapturePlane2Size);
-  bool GetCaptureCrop();
-  bool ReturnBuffersToMFC();
-  int DequeueBufferFromFIMC();
-  void MFCtoFIMCLoop();
+private:
 
   unsigned int m_iVideoWidth;
   unsigned int m_iVideoHeight;
-  unsigned int m_iConvertedWidth;
-  unsigned int m_iConvertedHeight;
+  unsigned int m_iOutputWidth;
+  unsigned int m_iOutputHeight;
 
-  int m_converterHandle;
-
-  V4l2::Buffers m_v4l2FIMCOutputBuffers;
-  V4l2::Buffers m_v4l2FIMCCaptureBuffers;
-
-  int m_iFIMCCapturePlane1Size;
-  int m_iFIMCCapturePlane2Size;
-  int m_iFIMCCapturePlane3Size;
-
-  int m_FIMCdequeuedBufferNumber;
-  std::atomic<bool> m_running;
-  std::mutex m_mutex;
-  std::thread m_MFCtoFIMCThread;
-
+  V4L2Buffer m_v4l2OutputBuffer;
+  int m_MFCDequeuedBufferNumber;
   bool m_dataRequested;
   
-  // 2 begins to be slow.
-  static const size_t FIMC_CAPTURE_BUFFERS_CNT = 3;
+  // Order number of previous frame
+  uint32_t m_sequence;
+  uint32_t m_inputSequence;
+  uint32_t m_missedFrames;
+  size_t m_framesToSkip;
 
-  // FIMC does not copy timestamp values between buffers
-  double m_pts[FIMC_CAPTURE_BUFFERS_CNT];
-  size_t m_ptsWriteIndex;
-  size_t m_ptsReadIndex;
+  CDVDStreamInfo m_hints;
+
+  bool OpenDevices();
+
+  bool SetupCaptureFormat(int& MFCCapturePlane1Size, int& MFCCapturePlane2Size);
+  bool GetCaptureCrop();
+  void PrepareOutputBuffer(int bufferIndex);
 };
 
 #define memzero(x) memset(&(x), 0, sizeof (x))

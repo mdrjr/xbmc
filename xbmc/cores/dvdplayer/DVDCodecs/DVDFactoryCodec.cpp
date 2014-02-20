@@ -42,6 +42,9 @@
 #if defined(HAVE_LIBCRYSTALHD)
 #include "Video/DVDVideoCodecCrystalHD.h"
 #endif
+#if defined(TARGET_HYBRIS)
+#include "Video/DVDVideoCodecHybris.h"
+#endif
 #include "Audio/DVDAudioCodecFFmpeg.h"
 #include "Audio/DVDAudioCodecLibMad.h"
 #include "Audio/DVDAudioCodecPcm.h"
@@ -176,14 +179,17 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
   hwSupport += "VAAPI:no ";
 #endif
 #if defined(HAVE_EXYNOS4) && defined(_LINUX)
-  hwSupport += "MFCv5:yes";
+  hwSupport += "MFCv5:yes ";
 #elif defined(_LINUX)
-  hwSupport += "MFCv5:no";
+  hwSupport += "MFCv5:no ";
 #endif
 #if defined(HAVE_EXYNOS5) && defined(_LINUX)
-  hwSupport += "MFCv6:yes";
+  hwSupport += "MFCv6:yes ";
 #elif defined(_LINUX)
-  hwSupport += "MFCv6:no";
+  hwSupport += "MFCv6:no ";
+#endif
+#if defined(TARGET_HYBRIS)
+  hwSupport += "hybris:yes ";
 #endif
 
   CLog::Log(LOGDEBUG, "CDVDFactoryCodec: compiled in hardware support: %s", hwSupport.c_str());
@@ -262,6 +268,16 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
       if (hint.codec == CODEC_ID_H264 || hint.codec == CODEC_ID_MPEG2VIDEO || hint.codec == CODEC_ID_VC1)
     {
       if ( (pCodec = OpenCodec(new CDVDVideoCodecOpenMax(), hint, options)) ) return pCodec;
+    }
+  }
+#endif
+
+#if defined(TARGET_HYBRIS)
+  if (!hint.software )
+  {
+      if (hint.codec == CODEC_ID_H264 || hint.codec == CODEC_ID_MPEG2VIDEO || hint.codec == CODEC_ID_VC1)
+    {
+      if ( (pCodec = OpenCodec(new CDVDVideoCodecHybris(), hint, options)) ) return pCodec;
     }
   }
 #endif
