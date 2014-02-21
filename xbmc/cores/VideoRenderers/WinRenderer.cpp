@@ -392,6 +392,7 @@ unsigned int CWinRenderer::PreInit()
 
   g_Windowing.Get3DDevice()->GetDeviceCaps(&m_deviceCaps);
 
+  m_formats.clear();
   m_formats.push_back(RENDER_FMT_YUV420P);
 
   m_iRequestedMethod = CSettings::Get().GetInt("videoplayer.rendermethod");
@@ -953,6 +954,11 @@ void CWinRenderer::Stage1()
 
     // Restore the render target
     pD3DDevice->SetRenderTarget(0, oldRT);
+
+    // MSDN says: Setting a new render target will cause the viewport 
+    // to be set to the full size of the new render target.
+    // So we need restore our viewport
+    g_Windowing.RestoreViewPort();
 
     oldRT->Release();
     newRT->Release();

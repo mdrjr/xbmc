@@ -649,7 +649,7 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
       break;
 
     case AE_TOP_CONFIGURED_IDLE:
-      if (port == NULL) // timeout
+      if (port == &m_controlPort)
       {
         switch (signal)
         {
@@ -667,6 +667,14 @@ void CActiveAE::StateMachine(int signal, Protocol *port, Message *msg)
           m_state = AE_TOP_CONFIGURED_PLAY;
           m_extTimeout = 0;
           return;
+        default:
+          break;
+        }
+      }
+      else if (port == NULL) // timeout
+      {
+        switch (signal)
+        {
         case CActiveAEControlProtocol::TIMEOUT:
           ResampleSounds();
           ClearDiscardedBuffers();
@@ -922,6 +930,11 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
   if (m_streams.empty())
   {
     inputFormat = m_sinkFormat;
+    if (m_sinkFormat.m_channelLayout.Count() > m_sinkRequestFormat.m_channelLayout.Count())
+    {
+      inputFormat.m_channelLayout = m_sinkRequestFormat.m_channelLayout;
+      inputFormat.m_channelLayout.ResolveChannels(m_sinkFormat.m_channelLayout);
+    }
     inputFormat.m_dataFormat = AE_FMT_FLOAT;
     inputFormat.m_frameSize = inputFormat.m_channelLayout.Count() *
                               (CAEUtil::DataFormatToBits(inputFormat.m_dataFormat) >> 3);
@@ -1015,6 +1028,16 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
       outputFormat.m_dataFormat = AE_FMT_FLOAT;
       outputFormat.m_frameSize = outputFormat.m_channelLayout.Count() *
                                  (CAEUtil::DataFormatToBits(outputFormat.m_dataFormat) >> 3);
+
+      // due to channel ordering of the driver, a sink may return more channels than
+      // requested, i.e. 2.1 request returns FL,FR,BL,BR,FC,LFE for ALSA
+      // in this case we need to downmix to requested format
+      if (m_sinkFormat.m_channelLayout.Count() > m_sinkRequestFormat.m_channelLayout.Count())
+      {
+        outputFormat.m_channelLayout = m_sinkRequestFormat.m_channelLayout;
+        outputFormat.m_channelLayout.ResolveChannels(m_sinkFormat.m_channelLayout);
+      }
+
       // TODO: adjust to decoder
       sinkInputFormat = outputFormat;
     }
@@ -2060,7 +2083,7 @@ bool CActiveAE::Initialize()
   Message *reply;
   if (m_controlPort.SendOutMessageSync(CActiveAEControlProtocol::INIT,
                                                  &reply,
-                                                 5000))
+                                                 10000))
   {
     bool success = reply->signal == CActiveAEControlProtocol::ACC;
     reply->Release();
@@ -2123,17 +2146,9 @@ void CActiveAE::OnSettingsChange(const std::string& setting)
 
 bool CActiveAE::SupportsRaw(AEDataFormat format)
 {
-  if (!m_sink.HasPassthroughDevice())
+  if (!m_sink.SupportsFormat(CSettings::Get().GetString("audiooutput.passthroughdevice"), format))
     return false;
 
-  // those formats require HDMI
-  if (format == AE_FMT_DTSHD || format == AE_FMT_TRUEHD)
-  {
-    if(m_sink.GetDeviceType(CSettings::Get().GetString("audiooutput.passthroughdevice")) != AE_DEVTYPE_HDMI)
-      return false;
-  }
-
-  // TODO: check ELD?
   return true;
 }
 
@@ -2171,16 +2186,20 @@ bool CActiveAE::IsSettingVisible(const std::string &settingId)
   }
   else if (settingId == "audiooutput.truehdpassthrough")
   {
-    if (m_sink.HasPassthroughDevice() &&
-        CSettings::Get().GetInt("audiooutput.config") != AE_CONFIG_FIXED &&
-        m_sink.GetDeviceType(CSettings::Get().GetString("audiooutput.passthroughdevice")) == AE_DEVTYPE_HDMI)
+    if (m_sink.SupportsFormat(CSettings::Get().GetString("audiooutput.passthroughdevice"), AE_FMT_TRUEHD) &&
+        CSettings::Get().GetInt("audiooutput.config") != AE_CONFIG_FIXED)
       return true;
   }
   else if (settingId == "audiooutput.dtshdpassthrough")
   {
-    if (m_sink.HasPassthroughDevice() &&
-        CSettings::Get().GetInt("audiooutput.config") != AE_CONFIG_FIXED &&
-        m_sink.GetDeviceType(CSettings::Get().GetString("audiooutput.passthroughdevice")) == AE_DEVTYPE_HDMI)
+    if (m_sink.SupportsFormat(CSettings::Get().GetString("audiooutput.passthroughdevice"), AE_FMT_DTSHD) &&
+        CSettings::Get().GetInt("audiooutput.config") != AE_CONFIG_FIXED)
+      return true;
+  }
+  else if (settingId == "audiooutput.eac3passthrough")
+  {
+    if (m_sink.SupportsFormat(CSettings::Get().GetString("audiooutput.passthroughdevice"), AE_FMT_EAC3) &&
+        CSettings::Get().GetInt("audiooutput.config") != AE_CONFIG_FIXED)
       return true;
   }
   else if (settingId == "audiooutput.stereoupmix")
