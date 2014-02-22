@@ -6,6 +6,7 @@
 #include <dirent.h>
 #include <sys/ioctl.h>
 #include <fstream>
+#include <cmath>
 
 namespace Exynos {
 
@@ -161,7 +162,9 @@ bool CDVDVideoCodecExynos::SendBuffer(int bufferIndex, uint8_t *demuxer_content,
   fast_memcpy((uint8_t *)m_v4l2MFCOutputBuffers[bufferIndex].cPlane[0], demuxer_content, demuxer_bytes);
   m_v4l2MFCOutputBuffers[bufferIndex].iBytesUsed[0] = demuxer_bytes;
 
-  if (!m_v4l2MFCOutputBuffers.QueueBuffer(bufferIndex, {long(pts), long((pts - long(pts)) * 1000)})) {
+  double fractpart, intpart;
+  fractpart = modf(pts / 1000000.0, &intpart);
+  if (!m_v4l2MFCOutputBuffers.QueueBuffer(bufferIndex, {long(intpart), long(fractpart * 1000000)})) {
     CLog::Log(LOGERROR, "%s::%s - MFC OUTPUT Failed to queue buffer with index %d, errno %d", CLASSNAME, __func__, bufferIndex, errno);
     return false;
   }

@@ -139,6 +139,7 @@ bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &/*opti
 
   if (hints.height < 720) {
     // This is SD video. Software decoder can handle it and it is much more reliable.
+    CLog::Log(LOGNOTICE, "%s::%s - This is SD video and it can be software decoded.", CLASSNAME, __func__);
     return false;
   }
 
@@ -150,7 +151,6 @@ bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &/*opti
   }
 
   m_MFCDequeuedBufferNumber = -1;
-  m_dataRequested = false;
   m_framesToSkip = 0;
   m_missedFrames = 0;
   m_inputSequence = 0;
@@ -243,12 +243,12 @@ void CDVDVideoCodecExynos5::PrepareOutputBuffer(int bufferIndex) {
 }
 
 int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts) {
-  if (m_framesToSkip) {
-    --m_framesToSkip;
-    return VC_ERROR;
-  }
-
   if(pData) {
+    if (m_framesToSkip) {
+      --m_framesToSkip;
+      return VC_ERROR;
+    }
+
     size_t index;
     for (index = 0; index < m_v4l2MFCOutputBuffers.size(); ++index) {
       if (!m_v4l2MFCOutputBuffers[index].bQueue) {
@@ -257,8 +257,7 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
     }
     if (index == m_v4l2MFCOutputBuffers.size()) {
       CLog::Log(LOGERROR, "%s::%s - MFC OUTPUT All buffers are queued and busy, no space for new frame to decode. Very broken situation.", CLASSNAME, __func__);
-      /* FIXME This should be handled as abnormal situation that should be addressed, otherwise decoding will stuck here forever */
-      return VC_FLUSHED;
+      return VC_ERROR;
     }
     if (!SendBuffer(index, pData, iSize, pts)) {
         return VC_ERROR;
@@ -276,20 +275,17 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
     m_MFCDequeuedBufferNumber = -1;
   }
 
+  int ret = 0;
+
   // Fill up MFC buffer if there is any space.
-  // XBMC would give us null pData if we previously returned VC_BUFFER
-  // only if no more data available. In this case just continue decoding.
-  if (!(m_dataRequested && !pData)) {
-    for (size_t index = 0; index < m_v4l2MFCOutputBuffers.size(); ++index) {
-      if (!m_v4l2MFCOutputBuffers[index].bQueue) {
-        // We have free buffer, ask XBMC for new frame
-        m_dataRequested = true;
-        return VC_BUFFER;
-      }
+  for (size_t index = 0; index < m_v4l2MFCOutputBuffers.size(); ++index) {
+    if (!m_v4l2MFCOutputBuffers[index].bQueue) {
+      // We have free buffer, ask XBMC for new frame
+      ret |= VC_BUFFER;
     }
   }
 
-  for (;;) {
+  do {
 // FIXME This code is commented out because for some reason I don't get POLLIN events.
 /*    struct pollfd pollRequest = {
         m_decoderHandle,
@@ -300,55 +296,46 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
         return VC_ERROR;
     }*/
 
-    if (/*(pollRequest.revents & POLLOUT) && */!(m_dataRequested && !pData)) {
+    /*if ((pollRequest.revents & POLLOUT))*/ {
       timeval time;
       uint32_t sequence;
       if (m_v4l2MFCOutputBuffers.DequeueBuffer(sequence, time) >= 0) {
-        m_dataRequested = true;
-        return VC_BUFFER;
+        ret |= VC_BUFFER;
       }
     }
-    m_dataRequested = false;
 
     /*if (pollRequest.revents & POLLIN)*/ {
       // Dequeue decoded frame
       uint32_t sequence;
       timeval ptsTime;
       m_MFCDequeuedBufferNumber = m_v4l2MFCCaptureBuffers.DequeueBuffer(sequence, ptsTime);
-      if (m_MFCDequeuedBufferNumber < 0) {
-        continue;
-        if (errno == EAGAIN) { // Buffer is still busy, queue more
-          m_dataRequested = true;
+      if (m_MFCDequeuedBufferNumber > 0) {
+        // This is a kludge for broken interlaced video. If field order is not appropriate MFC would enter into broken state and would output garbage.
+        // Skipping fields would not help. Full reinitialization is needed.
+        m_missedFrames += sequence - m_sequence - 1;
+        if (m_missedFrames > 5) {
+          CLog::Log(LOGERROR, "%s::%s - MFC fails to decode interlaced video if fields are not in proper order. Reinitializing MFC.", CLASSNAME, __func__);
+
+          Dispose();
+          CDVDCodecOptions options;
+          // FIXME Should shutdown completely if it fails
+          Open(m_hints, options);
+
+          m_framesToSkip = m_inputSequence & 1 ? 1 : 0;
+          CLog::Log(LOGERROR, "%s::%s - MFC continuing decoding", CLASSNAME, __func__);
           return VC_BUFFER;
         }
-        CLog::Log(LOGERROR, "%s::%s - MFC CAPTURE error dequeue output buffer, got number %d, errno %d", CLASSNAME, __func__, int(m_MFCDequeuedBufferNumber), errno);
-        return VC_ERROR;
-      }
+        m_sequence = sequence;
 
-      // This is a kludge for broken interlaced video. If field order is not appropriate MFC would enter into broken state and would output garbage.
-      // Skipping fields would not help. Full reinitialization is needed.
-      m_missedFrames += sequence - m_sequence - 1;
-      if (m_missedFrames > 5) {
-        CLog::Log(LOGERROR, "%s::%s - MFC fails to decode interlaced video if fields are not in proper order. Reinitializing MFC.", CLASSNAME, __func__);
+        PrepareOutputBuffer(m_MFCDequeuedBufferNumber);
 
-        Dispose();
-        CDVDCodecOptions options;
-        // FIXME Should shutdown completely if it fails
-        Open(m_hints, options);
-
-        m_framesToSkip = m_inputSequence & 1 ? 0 : 1;
-        CLog::Log(LOGERROR, "%s::%s - MFC continuing decoding", CLASSNAME, __func__);
-        m_dataRequested = true;
-        return VC_BUFFER;
-      }
-      m_sequence = sequence;
-
-      PrepareOutputBuffer(m_MFCDequeuedBufferNumber);
-
-      m_videoBuffer.pts = (ptsTime.tv_sec + double(ptsTime.tv_usec)/1000); 
-      m_videoBuffer.dts = m_videoBuffer.pts;
+        m_videoBuffer.pts = double(ptsTime.tv_sec)*1000000.0 + double(ptsTime.tv_usec); 
+        m_videoBuffer.dts = m_videoBuffer.pts;
     
-      return VC_PICTURE; // Picture is finally ready to be processed further
+        ret |= VC_PICTURE; // Picture is finally ready to be processed further
+      }
     }
-  }
+  } while(!ret);
+
+  return ret;
 }

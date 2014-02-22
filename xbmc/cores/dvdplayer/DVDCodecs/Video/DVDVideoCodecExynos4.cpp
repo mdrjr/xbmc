@@ -417,7 +417,7 @@ void CDVDVideoCodecExynos4::MFCtoFIMCLoop() {
           CLog::Log(LOGERROR, "%s::%s - FIMC OUTPUT Failed to queue buffer with index %d, errno %d", CLASSNAME, __func__, int(index), errno);
         } else {
           std::unique_lock<std::mutex> lock(m_mutex);
-          m_pts[m_ptsWriteIndex] = (ptsTime.tv_sec + double(ptsTime.tv_usec)/1000);
+          m_pts[m_ptsWriteIndex] = double(ptsTime.tv_sec)*1000000.0 + double(ptsTime.tv_usec);
           m_ptsWriteIndex = (m_ptsWriteIndex + 1) % FIMC_CAPTURE_BUFFERS_CNT;
         }
       }
