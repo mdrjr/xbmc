@@ -96,10 +96,17 @@ public:
 
   bool operator==(const CDVDStreamInfo& right)      { return Equal(right, true);}
   bool operator!=(const CDVDStreamInfo& right)      { return !Equal(right, true);}
-  void operator=(const CDVDStreamInfo& right)       { Assign(right, true); }
+  CDVDStreamInfo& operator=(const CDVDStreamInfo& right) {
+    if (&right != this)
+      Assign(right, true);
+    return *this;
+  }
 
   bool operator==(const CDemuxStream& right)      { return Equal( CDVDStreamInfo(right, true), true);}
   bool operator!=(const CDemuxStream& right)      { return !Equal( CDVDStreamInfo(right, true), true);}
-  void operator=(const CDemuxStream& right)      { Assign(right, true); }
+  CDVDStreamInfo& operator=(const CDemuxStream& right) {
+    Assign(right, true);
+    return *this;
+  }
 
 };

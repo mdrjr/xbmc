@@ -25,6 +25,7 @@ class CDVDVideoCodecExynos : public CDVDVideoCodec
 public:
   CDVDVideoCodecExynos();
 
+  virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
   virtual void Reset();
   virtual void SetDropState(bool bDrop);
 
@@ -50,8 +51,9 @@ protected:
 
   int m_decoderHandle;
 
-  bool m_dropPictures;
   DVDVideoPicture m_videoBuffer;
+
+  CDVDStreamInfo m_hints;
 
 private:
   std::string m_name;
