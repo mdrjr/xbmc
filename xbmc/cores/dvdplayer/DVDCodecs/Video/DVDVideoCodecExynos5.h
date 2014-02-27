@@ -42,6 +42,7 @@ public:
   virtual bool Open(CDVDStreamInfo &hints, CDVDCodecOptions &options);
   virtual void Dispose();
   virtual int Decode(BYTE* pData, int iSize, double dts, double pts);
+  virtual void Reset();
 
 private:
 
@@ -58,8 +59,7 @@ private:
   uint32_t m_inputSequence;
   uint32_t m_missedFrames;
   size_t m_framesToSkip;
-
-  CDVDStreamInfo m_hints;
+  bool m_isInterlaced;
 
   bool OpenDevices();
 

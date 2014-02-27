@@ -73,8 +73,6 @@ protected:
   std::mutex m_mutex;
   std::thread m_MFCtoFIMCThread;
 
-  bool m_dataRequested;
-  
   // 2 begins to be slow.
   static const size_t FIMC_CAPTURE_BUFFERS_CNT = 3;
 

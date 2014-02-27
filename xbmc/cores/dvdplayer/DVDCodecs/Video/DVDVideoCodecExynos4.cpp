@@ -210,6 +210,8 @@ bool CDVDVideoCodecExynos4::SetupFIMC() {
     m_v4l2FIMCCaptureBuffers[n].iBytesUsed[2] = m_iFIMCCapturePlane3Size;
   }
   CLog::Log(LOGDEBUG, "%s::%s - FIMC CAPTURE Succesfully allocated, mmapped and queued %d buffers", CLASSNAME, __func__, m_v4l2FIMCCaptureBuffers.size());
+
+  return true;
 }
 
 bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
@@ -217,9 +219,9 @@ bool CDVDVideoCodecExynos4::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
     return false;
 
   Dispose();
+  CDVDVideoCodecExynos::Open(hints, options);
 
   m_FIMCdequeuedBufferNumber = -1;
-  m_dataRequested = false;
   m_ptsWriteIndex = 0;
   m_ptsReadIndex = 0;
   m_running = true;
@@ -320,7 +322,6 @@ void CDVDVideoCodecExynos4::Dispose() {
   m_iConvertedHeight = 0;
   m_decoderHandle = -1;
   m_converterHandle = -1;
-  m_dropPictures = false;
 
   memzero(m_videoBuffer);
 }
@@ -435,10 +436,8 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
     }
     if (index == m_v4l2MFCOutputBuffers.size()) {
       CLog::Log(LOGERROR, "%s::%s - MFC OUTPUT All buffers are queued and busy, no space for new frame to decode. Very broken situation.", CLASSNAME, __func__);
-      /* FIXME This should be handled as abnormal situation that should be addressed, otherwise decoding will stuck here forever */
-      return VC_FLUSHED;
+      return VC_ERROR;
     }
-
     if (!SendBuffer(index, pData, iSize, pts)) {
         return VC_ERROR;
     }
@@ -453,20 +452,17 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
     m_FIMCdequeuedBufferNumber = -1;
   }
 
+  int ret = 0;
+
   // Fill up MFC buffer if there is any space.
-  // XBMC would give us null pData if we previously returned VC_BUFFER
-  // only if no more data available. In this case just continue decoding.
-  if (!(m_dataRequested && !pData)) {
-    for (size_t index = 0; index < m_v4l2MFCOutputBuffers.size(); ++index) {
-      if (!m_v4l2MFCOutputBuffers[index].bQueue) {
-        // We have free buffer, ask XBMC for new frame
-        m_dataRequested = true;
-        return VC_BUFFER;
-      }
+  for (size_t index = 0; index < m_v4l2MFCOutputBuffers.size(); ++index) {
+    if (!m_v4l2MFCOutputBuffers[index].bQueue) {
+      // We have free buffer, ask XBMC for new frame
+      ret |= VC_BUFFER;
     }
   }
 
-  for (;;) {
+  do {
     struct pollfd pollRequest[] = {
       {
         m_converterHandle,
@@ -480,21 +476,21 @@ int CDVDVideoCodecExynos4::Decode(BYTE* pData, int iSize, double dts, double pts
         return VC_ERROR;
     }
 
-    if ((pollRequest[1].revents & POLLOUT) && !(m_dataRequested && !pData)) {
+    if (pollRequest[1].revents & POLLOUT) {
       timeval time;
       uint32_t sequence;
       if (m_v4l2MFCOutputBuffers.DequeueBuffer(sequence, time) >= 0) {
-        m_dataRequested = true;
-        return VC_BUFFER;
+        ret |= VC_BUFFER;
       }
     }
-    m_dataRequested = false;
 
     if (pollRequest[0].revents & POLLIN) {
       int readyBuffer = DequeueBufferFromFIMC();
       if (readyBuffer != VC_BUFFER) {
-        return readyBuffer;
+        ret |= readyBuffer;
       }
     }
-  }
+  } while(!ret);
+
+  return ret;
 }
