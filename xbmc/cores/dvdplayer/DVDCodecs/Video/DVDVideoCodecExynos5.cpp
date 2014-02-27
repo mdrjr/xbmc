@@ -50,8 +50,6 @@
 #include <poll.h>
 #include <sys/mman.h>
 
-#include <iostream>
-
 #ifdef CLASSNAME
 #undef CLASSNAME
 #endif
@@ -67,7 +65,6 @@ CDVDVideoCodecExynos5::CDVDVideoCodecExynos5() {
   m_iOutputWidth = 0;
   m_iOutputHeight = 0;
   m_decoderHandle = -1;
-  m_dropPictures = false;
   m_framesToSkip = 0;
   
   memzero(m_v4l2OutputBuffer);
@@ -76,6 +73,13 @@ CDVDVideoCodecExynos5::CDVDVideoCodecExynos5() {
 
 CDVDVideoCodecExynos5::~CDVDVideoCodecExynos5() {
   Dispose();
+}
+
+void CDVDVideoCodecExynos5::Reset() {
+  CDVDVideoCodecExynos::Reset();
+  if (m_isInterlaced) {
+    m_framesToSkip = m_inputSequence & 1 ? 1 : 0;
+  }
 }
 
 bool CDVDVideoCodecExynos5::OpenDevices() {
@@ -111,6 +115,8 @@ bool CDVDVideoCodecExynos5::SetupCaptureFormat(int& MFCCapturePlane1Size, int& M
     CLASSNAME, __func__, fmt.fmt.pix_mp.pixelformat, fmt.fmt.pix_mp.width, fmt.fmt.pix_mp.height,
     MFCCapturePlane1Size, MFCCapturePlane2Size, fmt.fmt.pix_mp.plane_fmt[2].sizeimage);
 
+  m_isInterlaced = fmt.fmt.pix_mp.field == V4L2_FIELD_INTERLACED;
+
   return true;
 }
 
@@ -133,7 +139,7 @@ bool CDVDVideoCodecExynos5::GetCaptureCrop() {
   return true;
 }
 
-bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &/*options*/) {
+bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
   if (hints.software)
     return false;
 
@@ -144,6 +150,7 @@ bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &/*opti
   }
 
   Dispose();
+  CDVDVideoCodecExynos::Open(hints, options);
 
   if (!OpenDevices()) {
     CLog::Log(LOGERROR, "%s::%s - Needed devices not found", CLASSNAME, __func__);
@@ -175,8 +182,6 @@ bool CDVDVideoCodecExynos5::Open(CDVDStreamInfo &hints, CDVDCodecOptions &/*opti
   if (!SetupCaptureBuffers(MFCCapturePlane1Size, MFCCapturePlane2Size))
     return false;
   
-  m_hints = hints;
-
   CLog::Log(LOGNOTICE, "%s::%s - MFC Setup succesfull, start streaming", CLASSNAME, __func__);
   return true;
 }
@@ -202,7 +207,6 @@ void CDVDVideoCodecExynos5::Dispose() {
   m_iVideoHeight = 0;
   m_iOutputWidth = 0;
   m_iOutputHeight = 0;
-  m_dropPictures = false;
 
   memzero(m_v4l2OutputBuffer);
   memzero(m_videoBuffer);
@@ -260,7 +264,7 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
       return VC_ERROR;
     }
     if (!SendBuffer(index, pData, iSize, pts)) {
-        return VC_ERROR;
+      return VC_ERROR;
     }
 
     ++m_inputSequence;
@@ -285,6 +289,7 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
     }
   }
 
+//  auto startTime = std::chrono::steady_clock::now();
   do {
 // FIXME This code is commented out because for some reason I don't get POLLIN events.
 /*    struct pollfd pollRequest = {
@@ -310,19 +315,13 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
       timeval ptsTime;
       m_MFCDequeuedBufferNumber = m_v4l2MFCCaptureBuffers.DequeueBuffer(sequence, ptsTime);
       if (m_MFCDequeuedBufferNumber > 0) {
-        // This is a kludge for broken interlaced video. If field order is not appropriate MFC would enter into broken state and would output garbage.
+        // This is a kludge for broken interlaced video. If field order is not
+        // appropriate MFC would enter into broken state and would output garbage.
         // Skipping fields would not help. Full reinitialization is needed.
         m_missedFrames += sequence - m_sequence - 1;
-        if (m_missedFrames > 5) {
+        if (m_isInterlaced && m_missedFrames > 5) {
           CLog::Log(LOGERROR, "%s::%s - MFC fails to decode interlaced video if fields are not in proper order. Reinitializing MFC.", CLASSNAME, __func__);
-
-          Dispose();
-          CDVDCodecOptions options;
-          // FIXME Should shutdown completely if it fails
-          Open(m_hints, options);
-
-          m_framesToSkip = m_inputSequence & 1 ? 1 : 0;
-          CLog::Log(LOGERROR, "%s::%s - MFC continuing decoding", CLASSNAME, __func__);
+          Reset();
           return VC_BUFFER;
         }
         m_sequence = sequence;
@@ -335,6 +334,14 @@ int CDVDVideoCodecExynos5::Decode(BYTE* pData, int iSize, double dts, double pts
         ret |= VC_PICTURE; // Picture is finally ready to be processed further
       }
     }
+
+    // FIXME seems that this kludge is not needed
+/*    if (!ret && std::chrono::steady_clock::now() - startTime > std::chrono::milliseconds(500)) {
+      CLog::Log(LOGERROR, "%s::%s - MFC is stuck. Reinitializing it.", CLASSNAME, __func__);
+      Reset(); 
+      return VC_BUFFER;
+    }*/
+
   } while(!ret);
 
   return ret;

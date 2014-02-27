@@ -1,5 +1,7 @@
 #include "DVDVideoCodecExynos.h"
 
+#include "DVDCodecs/DVDCodecs.h"
+
 #include <utils/log.h>
 #include <utils/fastmemcpy.h>
 
@@ -65,6 +67,12 @@ CDVDVideoCodecExynos::CDVDVideoCodecExynos()
     , m_bVideoConvert(false)
     , m_videoBuffer()
 {}
+
+bool CDVDVideoCodecExynos::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
+  m_bVideoConvert = false;
+  m_converter = CBitstreamConverter();
+  m_videoBuffer = DVDVideoPicture();
+}
 
 bool CDVDVideoCodecExynos::SetupOutputFormat(CDVDStreamInfo &hints) {
   // Set format in which encoded frames are streamed TO mfc
@@ -144,6 +152,7 @@ bool CDVDVideoCodecExynos::SendHeader(CDVDStreamInfo &hints) {
   }
   CLog::Log(LOGDEBUG, "%s::%s - MFC OUTPUT Stream ON", CLASSNAME, __func__);
 
+  m_hints = hints;
   return true;
 }
 
@@ -206,6 +215,14 @@ bool CDVDVideoCodecExynos::SetupCaptureBuffers(int MFCCapturePlane1Size, int MFC
 }
 
 void CDVDVideoCodecExynos::Reset() {
+  CLog::Log(LOGNOTICE, "%s::%s - Resetting codec.", CLASSNAME, __func__);
+
+  Dispose();
+  CDVDCodecOptions options;
+  if (!Open(m_hints, options)) {
+    CLog::Log(LOGERROR, "%s::%s - Could not reset codec", CLASSNAME, __func__);
+    Dispose();
+  }
 }
 
 bool CDVDVideoCodecExynos::GetPicture(DVDVideoPicture* pDvdVideoPicture) {
@@ -219,12 +236,11 @@ bool CDVDVideoCodecExynos::ClearPicture(DVDVideoPicture* pDvdVideoPicture)
 }
 
 void CDVDVideoCodecExynos::SetDropState(bool bDrop) {
-  m_dropPictures = bDrop;
 }
 
 const char* CDVDVideoCodecExynos::GetName() {
-    // m_name is never changed after open
-    return m_name.c_str();
+  // m_name is never changed after open
+  return m_name.c_str();
 }
 
 } // namespace Exynos
