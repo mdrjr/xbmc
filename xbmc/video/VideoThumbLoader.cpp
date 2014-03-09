@@ -135,7 +135,13 @@ bool CThumbExtractor::DoWork()
     if (db.Open())
     {
       if (URIUtils::IsStack(m_listpath))
-        m_item.GetVideoInfoTag()->m_streamDetails.SetVideoDuration(0, 0); // Don't know the total time of the stack, so set duration to zero to avoid confusion
+      {
+        // Don't know the total time of the stack, so set duration to zero to avoid confusion
+        m_item.GetVideoInfoTag()->m_streamDetails.SetVideoDuration(0, 0);
+
+        // Restore original stack path
+        m_item.SetPath(m_listpath);
+      }
 
       if (info->m_iFileId < 0)
         db.SetStreamDetailsForFile(info->m_streamDetails, !info->m_strFileNameAndPath.empty() ? info->m_strFileNameAndPath : m_item.GetPath());
@@ -467,6 +473,9 @@ bool CVideoThumbLoader::FillThumb(CFileItem &item)
 
 std::string CVideoThumbLoader::GetLocalArt(const CFileItem &item, const std::string &type, bool checkFolder)
 {
+  if (item.SkipLocalArt())
+    return "";
+
   /* Cache directory for (sub) folders on streamed filesystems. We need to do this
      else entering (new) directories from the app thread becomes much slower. This
      is caused by the fact that Curl Stat/Exist() is really slow and that the 

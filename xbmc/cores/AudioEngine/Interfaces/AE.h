@@ -203,7 +203,7 @@ public:
    * @see CAEPackIEC61937::CAEPackIEC61937()
    * @returns true if the AudioEngine is capable of RAW output
    */
-  virtual bool SupportsRaw(AEDataFormat format) { return false; }
+  virtual bool SupportsRaw(AEDataFormat format, int samplerate) { return false; }
 
    /**
    * Returns true if the AudioEngine supports drain mode which is not streaming silence when idle
@@ -232,5 +232,10 @@ public:
    * @param millis time for which old configuration should be kept
    */
   virtual void KeepConfiguration(unsigned int millis) {return; }
+
+  /**
+   * Instruct AE to re-initialize, e.g. after ELD change event
+   */
+  virtual void DeviceChange() {return; }
 };
 

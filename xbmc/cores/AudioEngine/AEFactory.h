@@ -52,7 +52,7 @@ public:
   static void EnumerateOutputDevices(AEDeviceList &devices, bool passthrough);
   static void VerifyOutputDevice(std::string &device, bool passthrough);
   static std::string GetDefaultDevice(bool passthrough);
-  static bool SupportsRaw(AEDataFormat format);
+  static bool SupportsRaw(AEDataFormat format, int samplerate);
   static bool SupportsSilenceTimeout();
 
   /**
@@ -76,6 +76,7 @@ public:
   static void SettingOptionsAudioStreamsilenceFiller(const CSetting *setting, std::vector< std::pair<std::string, int> > &list, int &current);
   static bool IsSettingVisible(const std::string &condition, const std::string &value, const std::string &settingId);
   static void KeepConfiguration(unsigned int millis);
+  static void DeviceChange();
 
   static void RegisterAudioCallback(IAudioCallback* pCallback);
   static void UnregisterAudioCallback();
