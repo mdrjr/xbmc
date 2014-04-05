@@ -23,6 +23,7 @@
 #include "utils/log.h"
 #include "Util.h"
 #include "guilib/LocalizeStrings.h"
+#include "Application.h"
 
 using namespace std;
 
@@ -223,11 +224,28 @@ struct SinkInfoStruct
   bool isHWDevice;
   bool device_found;
   pa_threaded_mainloop *mainloop;
+  int samplerate;
   SinkInfoStruct()
   {
     list = NULL;
     isHWDevice = false;
     device_found = true;
+    mainloop = NULL;
+    samplerate = 0;
+  }
+};
+
+struct SinkInputInfoStruct
+{
+  bool is_valid;
+  int mute;
+  int index;
+  pa_cvolume volume;
+  pa_threaded_mainloop *mainloop;
+  SinkInputInfoStruct()
+  {
+    is_valid = false;
+    mute = 0;
     mainloop = NULL;
   }
 };
@@ -240,9 +258,23 @@ static void SinkInfoCallback(pa_context *c, const pa_sink_info *i, int eol, void
     if (i->flags && (i->flags & PA_SINK_HARDWARE))
       sinkStruct->isHWDevice = true;
 
+    sinkStruct->samplerate = i->sample_spec.rate;
     sinkStruct->device_found = true;
   }
   pa_threaded_mainloop_signal(sinkStruct->mainloop, 0);
+}
+
+static void SinkInputInfoCallback(pa_context *c, const pa_sink_input_info *i, int eol, void *userdata)
+{
+  SinkInputInfoStruct *siiStruct = (SinkInputInfoStruct *)userdata;
+  if(i && i->has_volume)
+  {
+    siiStruct->is_valid = true;
+    siiStruct->volume = i->volume;
+    siiStruct->mute = i->mute;
+    siiStruct->index = i->index;
+  }
+  pa_threaded_mainloop_signal(siiStruct->mainloop, 0);
 }
 
 static AEChannel PAChannelToAEChannel(pa_channel_position_t channel)
@@ -483,6 +515,27 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   }
   m_Channels = format.m_channelLayout.Count();
 
+  // store information about current sink
+  SinkInfoStruct sinkStruct;
+  sinkStruct.mainloop = m_MainLoop;
+  sinkStruct.device_found = false;
+
+  // get real sample rate of the device we want to open - to avoid resampling
+  bool isDefaultDevice = (device == "Default");
+  WaitForOperation(pa_context_get_sink_info_by_name(m_Context, isDefaultDevice ? NULL : device.c_str(), SinkInfoCallback, &sinkStruct), m_MainLoop, "Get Sink Info");
+  // only check if the device is existing - don't alter the sample rate
+  if (!sinkStruct.device_found)
+  {
+    CLog::Log(LOGERROR, "PulseAudio: Sink %s not found", device.c_str());
+    pa_threaded_mainloop_unlock(m_MainLoop);
+    Deinitialize();
+    return false;
+  }
+
+  // Pulse can resample everything between 1 hz and 192000 hz
+  // Make sure we are in the range that we originally added
+  format.m_sampleRate = std::max(5512U, std::min(format.m_sampleRate, 192000U));
+
   pa_format_info *info[1];
   info[0] = pa_format_info_new();
   info[0]->encoding = AEFormatToPulseEncoding(format.m_dataFormat);
@@ -497,9 +550,9 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   unsigned int samplerate;
   if (m_passthrough)
   {
-    if (format.m_encodedRate == 0)
+    if (format.m_encodedRate == 0 || format.m_encodedRate > format.m_sampleRate)
     {
-      CLog::Log(LOGNOTICE, "PulseAudio: Passthrough in use but m_encodedRate is not set - fallback to m_sampleRate");
+      CLog::Log(LOGNOTICE, "PulseAudio: Passthrough in use but m_encodedRate is not set or too large: %u - fallback to m_sampleRate", format.m_encodedRate);
       samplerate = format.m_sampleRate;
     }
     else
@@ -539,7 +592,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   m_BytesPerSecond = pa_bytes_per_second(&spec);
   unsigned int frameSize = pa_frame_size(&spec);
 
-  m_Stream = pa_stream_new_extended(m_Context, "audio stream", info, 1, NULL);
+  m_Stream = pa_stream_new_extended(m_Context, "xbmc audio stream", info, 1, NULL);
   pa_format_info_free(info[0]);
 
   if (m_Stream == NULL)
@@ -554,29 +607,7 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
   pa_stream_set_write_callback(m_Stream, StreamRequestCallback, m_MainLoop);
   pa_stream_set_latency_update_callback(m_Stream, StreamLatencyUpdateCallback, m_MainLoop);
 
-  bool isDefaultDevice = (device == "Default");
-
   pa_buffer_attr buffer_attr;
-  SinkInfoStruct sinkStruct;
-  sinkStruct.mainloop = m_MainLoop;
-  sinkStruct.isHWDevice = false;
-  sinkStruct.device_found = true; // needed to get default device opened
-
-  if (!isDefaultDevice)
-  {
-    // we need to check if the device we want to open really exists
-    // default device is handled in a special manner
-    sinkStruct.device_found = false; // if sink is valid it will be set true in pa_context_get_sink_info_by_name
-    WaitForOperation(pa_context_get_sink_info_by_name(m_Context, device.c_str(),SinkInfoCallback, &sinkStruct), m_MainLoop, "Get Sink Info");
-  }
-
-  if(!sinkStruct.device_found) // ActiveAE will open us again with a valid device name
-  {
-    CLog::Log(LOGERROR, "PulseAudio: Sink %s not found", device.c_str());
-    pa_threaded_mainloop_unlock(m_MainLoop);
-    Deinitialize();
-    return false;
-  }
 
   // 200ms max latency
   // 50ms min packet size
@@ -614,6 +645,29 @@ bool CAESinkPULSE::Initialize(AEAudioFormat &format, std::string &device)
     pa_threaded_mainloop_unlock(m_MainLoop);
     Deinitialize();
     return false;
+  }
+
+  //update local volume if we are in non passthrough mode
+  if (!m_passthrough)
+  {
+    unsigned int sink_input_idx = pa_stream_get_index(m_Stream);
+    SinkInputInfoStruct sii;
+    sii.mainloop = m_MainLoop;
+    bool success = WaitForOperation(pa_context_get_sink_input_info(m_Context, sink_input_idx, SinkInputInfoCallback, &sii), m_MainLoop, "Get Sink Input Info");
+    if(success && sii.is_valid)
+    {
+      // we don't have per channel values so use avg of them
+      pa_volume_t p_vol = pa_cvolume_avg(&sii.volume);
+      // store it internally
+      m_Volume = sii.volume;
+      float sValue = (float) pa_sw_volume_to_linear(p_vol);
+      CLog::Log(LOGDEBUG, "Restored Stream value to %f", sValue);
+      g_application.SetVolume(sValue, false);
+      if (sii.mute && sValue > 0)
+      {
+        CLog::Log(LOGDEBUG, "PulseAudio: Stream is muted - perhaps was a user wish - if volume is changed we unmute");
+      }
+    } 
   }
 
   const pa_buffer_attr *a;
@@ -748,6 +802,66 @@ void CAESinkPULSE::Drain()
   pa_threaded_mainloop_lock(m_MainLoop);
   WaitForOperation(pa_stream_drain(m_Stream, NULL, NULL), m_MainLoop, "Drain");
   pa_threaded_mainloop_unlock(m_MainLoop);
+}
+
+void CAESinkPULSE::SetVolume(float volume)
+{
+  if (m_IsAllocated && !m_passthrough)
+  {
+    // clamp possibly too large / low values
+    float per_cent_volume = std::max(0.0f, std::min(volume, 1.0f));
+
+    pa_threaded_mainloop_lock(m_MainLoop);
+    bool external_change = false;
+    //check if internal volume and sink input volume do not match
+    unsigned int sink_input_idx = pa_stream_get_index(m_Stream);
+    SinkInputInfoStruct sii;
+    sii.mainloop = m_MainLoop;
+    bool success = WaitForOperation(pa_context_get_sink_input_info(m_Context, sink_input_idx, SinkInputInfoCallback, &sii), m_MainLoop, "Get Sink Input Info");
+    float sValue = 0.0f;
+    if(success && sii.is_valid)
+    {
+      // we don't have per channel values so use avg of them
+      pa_volume_t n_vol = pa_cvolume_avg(&sii.volume);
+      pa_volume_t o_vol = pa_cvolume_avg(&m_Volume);
+      sValue = (float) pa_sw_volume_to_linear(n_vol);
+      if (n_vol != o_vol)
+      {
+        external_change = true;
+        // update internal volume
+        m_Volume = sii.volume;
+        CLog::Log(LOGDEBUG, "Restored Volume cause of external change to value to %f", sValue);
+        g_application.SetVolume(sValue, false);
+      }
+      // unmute if we should not be muted
+      if (sii.mute && sValue > 0)
+      {
+        pa_operation *op = pa_context_set_sink_input_mute(m_Context, sii.index, 0, NULL, NULL);
+        if (op == NULL)
+          CLog::Log(LOGERROR, "PulseAudio: Failed to unmute the stream");
+        else
+          pa_operation_unref(op);
+      }
+    }
+    else // we don't know stream volume so don't change anything
+    {
+      external_change = true;
+    }
+    if (!external_change)
+    {
+      pa_volume_t pavolume = pa_sw_volume_from_linear(per_cent_volume);
+      if ( pavolume <= 0 )
+        pa_cvolume_mute(&m_Volume, m_Channels);
+      else
+        pa_cvolume_set(&m_Volume, m_Channels, pavolume);
+      pa_operation *op = pa_context_set_sink_input_volume(m_Context, sink_input_idx, &m_Volume, NULL, NULL);
+      if (op == NULL)
+        CLog::Log(LOGERROR, "PulseAudio: Failed to set volume");
+      else
+        pa_operation_unref(op);
+    }
+    pa_threaded_mainloop_unlock(m_MainLoop);
+  }
 }
 
 void CAESinkPULSE::EnumerateDevicesEx(AEDeviceInfoList &list, bool force)

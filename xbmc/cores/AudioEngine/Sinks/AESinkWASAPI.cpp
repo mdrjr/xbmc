@@ -545,6 +545,7 @@ void CAESinkWASAPI::EnumerateDevicesEx(AEDeviceInfoList &deviceInfoList, bool fo
   CAEChannelInfo       deviceChannels;
   LPWSTR               pwszID = NULL;
   std::wstring         wstrDDID;
+  bool                 add192 = false;
 
   WAVEFORMATEXTENSIBLE wfxex = {0};
   HRESULT              hr;
@@ -671,14 +672,26 @@ void CAESinkWASAPI::EnumerateDevicesEx(AEDeviceInfoList &deviceInfoList, bool fo
       wfxex.Format.nBlockAlign          = wfxex.Format.nChannels * (wfxex.Format.wBitsPerSample >> 3);
       wfxex.Format.nAvgBytesPerSec      = wfxex.Format.nSamplesPerSec * wfxex.Format.nBlockAlign;
       hr = pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &wfxex.Format, NULL);
-      if (SUCCEEDED(hr))
+      if (SUCCEEDED(hr) || aeDeviceType == AE_DEVTYPE_HDMI)
+      {
+        if(FAILED(hr))
+          CLog::Log(LOGNOTICE, __FUNCTION__": data format \"%s\" on device \"%s\" seems to be not supported.", CAEUtil::DataFormatToStr(AE_FMT_DTSHD), strFriendlyName.c_str());
+
         deviceInfo.m_dataFormats.push_back(AEDataFormat(AE_FMT_DTSHD));
+        add192 = true;
+      }
 
       /* Test format Dolby TrueHD */
       wfxex.SubFormat                   = KSDATAFORMAT_SUBTYPE_IEC61937_DOLBY_MLP;
       hr = pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &wfxex.Format, NULL);
-      if (SUCCEEDED(hr))
+      if (SUCCEEDED(hr) || aeDeviceType == AE_DEVTYPE_HDMI)
+      {
+        if(FAILED(hr))
+          CLog::Log(LOGNOTICE, __FUNCTION__": data format \"%s\" on device \"%s\" seems to be not supported.", CAEUtil::DataFormatToStr(AE_FMT_TRUEHD), strFriendlyName.c_str());
+
         deviceInfo.m_dataFormats.push_back(AEDataFormat(AE_FMT_TRUEHD));
+        add192 = true;
+      }
 
       /* Test format Dolby EAC3 */
       wfxex.SubFormat                   = KSDATAFORMAT_SUBTYPE_IEC61937_DOLBY_DIGITAL_PLUS;
@@ -686,8 +699,14 @@ void CAESinkWASAPI::EnumerateDevicesEx(AEDeviceInfoList &deviceInfoList, bool fo
       wfxex.Format.nBlockAlign          = wfxex.Format.nChannels * (wfxex.Format.wBitsPerSample >> 3);
       wfxex.Format.nAvgBytesPerSec      = wfxex.Format.nSamplesPerSec * wfxex.Format.nBlockAlign;
       hr = pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &wfxex.Format, NULL);
-      if (SUCCEEDED(hr))
+      if (SUCCEEDED(hr) || aeDeviceType == AE_DEVTYPE_HDMI)
+      {
+        if(FAILED(hr))
+          CLog::Log(LOGNOTICE, __FUNCTION__": data format \"%s\" on device \"%s\" seems to be not supported.", CAEUtil::DataFormatToStr(AE_FMT_EAC3), strFriendlyName.c_str());
+
         deviceInfo.m_dataFormats.push_back(AEDataFormat(AE_FMT_EAC3));
+        add192 = true;
+      }
 
       /* Test format DTS */
       wfxex.Format.nSamplesPerSec       = 48000;
@@ -696,20 +715,35 @@ void CAESinkWASAPI::EnumerateDevicesEx(AEDeviceInfoList &deviceInfoList, bool fo
       wfxex.Format.nBlockAlign          = wfxex.Format.nChannels * (wfxex.Format.wBitsPerSample >> 3);
       wfxex.Format.nAvgBytesPerSec      = wfxex.Format.nSamplesPerSec * wfxex.Format.nBlockAlign;
       hr = pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &wfxex.Format, NULL);
-      if (SUCCEEDED(hr))
+      if (SUCCEEDED(hr) || aeDeviceType == AE_DEVTYPE_HDMI)
+      {
+        if(FAILED(hr))
+          CLog::Log(LOGNOTICE, __FUNCTION__": data format \"%s\" on device \"%s\" seems to be not supported.", CAEUtil::DataFormatToStr(AE_FMT_DTS), strFriendlyName.c_str());
+
         deviceInfo.m_dataFormats.push_back(AEDataFormat(AE_FMT_DTS));
+      }
 
       /* Test format Dolby AC3 */
       wfxex.SubFormat                   = KSDATAFORMAT_SUBTYPE_IEC61937_DOLBY_DIGITAL;
       hr = pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &wfxex.Format, NULL);
-      if (SUCCEEDED(hr))
+      if (SUCCEEDED(hr) || aeDeviceType == AE_DEVTYPE_HDMI)
+      {
+        if(FAILED(hr))
+          CLog::Log(LOGNOTICE, __FUNCTION__": data format \"%s\" on device \"%s\" seems to be not supported.", CAEUtil::DataFormatToStr(AE_FMT_AC3), strFriendlyName.c_str());
+
         deviceInfo.m_dataFormats.push_back(AEDataFormat(AE_FMT_AC3));
+      }
 
       /* Test format AAC */
       wfxex.SubFormat                   = KSDATAFORMAT_SUBTYPE_IEC61937_AAC;
       hr = pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &wfxex.Format, NULL);
-      if (SUCCEEDED(hr))
+      if (SUCCEEDED(hr) || aeDeviceType == AE_DEVTYPE_HDMI)
+      {
+        if(FAILED(hr))
+          CLog::Log(LOGNOTICE, __FUNCTION__": data format \"%s\" on device \"%s\" seems to be not supported.", CAEUtil::DataFormatToStr(AE_FMT_AAC), strFriendlyName.c_str());
+
         deviceInfo.m_dataFormats.push_back(AEDataFormat(AE_FMT_AAC));
+      }
 
       /* Test format for PCM format iteration */
       wfxex.Format.cbSize               = sizeof(WAVEFORMATEXTENSIBLE)-sizeof(WAVEFORMATEX);
@@ -756,6 +790,11 @@ void CAESinkWASAPI::EnumerateDevicesEx(AEDeviceInfoList &deviceInfoList, bool fo
         hr = pClient->IsFormatSupported(AUDCLNT_SHAREMODE_EXCLUSIVE, &wfxex.Format, NULL);
         if (SUCCEEDED(hr))
           deviceInfo.m_sampleRates.push_back(WASAPISampleRates[j]);
+        else if (wfxex.Format.nSamplesPerSec == 192000 && add192)
+        {
+          deviceInfo.m_sampleRates.push_back(WASAPISampleRates[j]);
+          CLog::Log(LOGNOTICE, __FUNCTION__": sample rate 192khz on device \"%s\" seems to be not supported.", strFriendlyName.c_str());
+        }
       }
 
       /* Test format for channels iteration */
@@ -831,6 +870,12 @@ void CAESinkWASAPI::EnumerateDevicesEx(AEDeviceInfoList &deviceInfoList, bool fo
         }
       }
       pClient->Release();
+
+      if (hasLpcm == false && aeDeviceType == AE_DEVTYPE_HDMI)
+      {
+        CLog::Log(LOGNOTICE, __FUNCTION__": data format \"%s\" on device \"%s\" seems to be not supported.", CAEUtil::DataFormatToStr(AE_FMT_LPCM), strFriendlyName.c_str());
+        deviceInfo.m_dataFormats.push_back(AE_FMT_LPCM);
+      }
     }
     else
     {

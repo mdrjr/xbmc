@@ -441,7 +441,7 @@ bool CSettingList::SetValue(const SettingPtrList &values)
     return false;
   }
 
-  m_changed = (toString(m_values) == toString(m_defaults));
+  m_changed = (toString(m_values) != toString(m_defaults));
   OnSettingChanged(this);
   return true;
 }
@@ -1092,7 +1092,7 @@ bool CSettingNumber::fromString(const std::string &strValue, double &value)
     return false;
 
   char *end = NULL;
-  value = (int)strtod(strValue.c_str(), &end);
+  value = strtod(strValue.c_str(), &end);
   if (end != NULL && *end != '\0')
     return false;
 
