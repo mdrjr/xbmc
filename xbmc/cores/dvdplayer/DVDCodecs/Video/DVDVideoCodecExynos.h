@@ -9,6 +9,10 @@
 #include <functional>
 #include <string>
 
+#ifndef V4L2_CAP_VIDEO_M2M_MPLANE
+  #define V4L2_CAP_VIDEO_M2M_MPLANE       0x00004000
+#endif
+
 namespace Exynos {
 
 bool isStreamingDevice(int fd);
