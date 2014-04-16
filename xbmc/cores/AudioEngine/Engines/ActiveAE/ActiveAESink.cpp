@@ -89,6 +89,7 @@ AEDeviceType CActiveAESink::GetDeviceType(const std::string &device)
 
 bool CActiveAESink::HasPassthroughDevice()
 {
+#ifndef HAS_LIBAMCODEC
   for (AESinkInfoList::iterator itt = m_sinkInfoList.begin(); itt != m_sinkInfoList.end(); ++itt)
   {
     for (AEDeviceInfoList::iterator itt2 = itt->m_deviceInfoList.begin(); itt2 != itt->m_deviceInfoList.end(); ++itt2)
@@ -99,10 +100,14 @@ bool CActiveAESink::HasPassthroughDevice()
     }
   }
   return false;
+#else
+  return true;
+#endif
 }
 
 bool CActiveAESink::SupportsFormat(const std::string &device, AEDataFormat format, int samplerate)
 {
+#ifndef HAS_LIBAMCODEC
   std::string dev = device;
   std::string dri;
   CAESinkFactory::ParseDevice(dev, dri);
@@ -133,6 +138,9 @@ bool CActiveAESink::SupportsFormat(const std::string &device, AEDataFormat forma
     }
   }
   return false;
+#else
+  return true;
+#endif
 }
 
 enum SINK_STATES
