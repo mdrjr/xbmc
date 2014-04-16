@@ -53,5 +53,8 @@ protected:
   void DisableFreeScale();
 
 private:
+  void SetFramebufferResolution(const RESOLUTION_INFO &res) const;
+  void SetFramebufferResolution(int width, int height) const;
+
   std::string m_framebuffer_name;
 };
