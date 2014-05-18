@@ -26,6 +26,7 @@
 #include "threads/SingleLock.h"
 #include "utils/URIUtils.h"
 #include "utils/XBMCTinyXML.h"
+#include "filesystem/Directory.h"
 #include "addons/Skin.h"
 #include "cores/AudioEngine/AEFactory.h"
 
@@ -131,7 +132,7 @@ void CGUIAudioManager::PlayWindowSound(int id, WINDOW_SOUND event)
 }
 
 // \brief Play a sound given by filename
-void CGUIAudioManager::PlayPythonSound(const CStdString& strFileName)
+void CGUIAudioManager::PlayPythonSound(const CStdString& strFileName, bool useCached /*= true*/)
 {
   CSingleLock lock(m_cs);
 
@@ -144,8 +145,16 @@ void CGUIAudioManager::PlayPythonSound(const CStdString& strFileName)
   if (itsb != m_pythonSounds.end())
   {
     IAESound* sound = itsb->second;
-    sound->Play();
-    return;
+    if (useCached)
+    {
+      sound->Play();
+      return;
+    }
+    else
+    {
+      FreeSoundAllUsage(sound);
+      m_pythonSounds.erase(itsb);
+    }
   }
 
   IAESound *sound = LoadSound(strFileName);
@@ -207,12 +216,19 @@ bool CGUIAudioManager::Load()
   else
     Enable(true);
 
-  if (CSettings::Get().GetString("lookandfeel.soundskin")=="SKINDEFAULT")
+  CStdString soundSkin = CSettings::Get().GetString("lookandfeel.soundskin");
+
+  if (soundSkin == "SKINDEFAULT")
   {
     m_strMediaDir = URIUtils::AddFileToFolder(g_SkinInfo->Path(), "sounds");
   }
   else
-    m_strMediaDir = URIUtils::AddFileToFolder("special://xbmc/sounds", CSettings::Get().GetString("lookandfeel.soundskin"));
+  {
+    //check if sound skin is located in home, otherwise fallback to built-ins
+    m_strMediaDir = URIUtils::AddFileToFolder("special://home/sounds", soundSkin);
+    if (!XFILE::CDirectory::Exists(m_strMediaDir))
+      m_strMediaDir = URIUtils::AddFileToFolder("special://xbmc/sounds", soundSkin);
+  }
 
   CStdString strSoundsXml = URIUtils::AddFileToFolder(m_strMediaDir, "sounds.xml");
 
@@ -330,6 +346,18 @@ void CGUIAudioManager::FreeSound(IAESound *sound)
         CAEFactory::FreeSound(sound);
         m_soundCache.erase(it);
       }
+      return;
+    }
+  }
+}
+
+void CGUIAudioManager::FreeSoundAllUsage(IAESound *sound)
+{
+  CSingleLock lock(m_cs);
+  for(soundCache::iterator it = m_soundCache.begin(); it != m_soundCache.end(); ++it) {
+    if (it->second.sound == sound) {   
+      CAEFactory::FreeSound(sound);
+      m_soundCache.erase(it);
       return;
     }
   }

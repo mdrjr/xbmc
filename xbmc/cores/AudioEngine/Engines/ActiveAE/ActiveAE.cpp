@@ -102,7 +102,7 @@ float CEngineStats::GetDelay(CActiveAEStream *stream)
   if (delay < 0)
     delay = 0.0;
 
-  delay += stream->m_bufferedTime;
+  delay += stream->m_bufferedTime / stream->m_streamResampleRatio;
   return delay;
 }
 
@@ -122,6 +122,7 @@ float CEngineStats::GetCacheTotal(CActiveAEStream *stream)
 
 float CEngineStats::GetWaterLevel()
 {
+  CSingleLock lock(m_lock);
   return (float)m_bufferedSamples / m_sinkSampleRate;
 }
 
@@ -167,7 +168,7 @@ CActiveAE::~CActiveAE()
 
 void CActiveAE::Dispose()
 {
-#if defined(HAS_GLX) || defined(TARGET_DARWIN_OSX)
+#if defined(HAS_GLX) || defined(TARGET_DARWIN)
   g_Windowing.Unregister(this);
 #endif
 
@@ -1169,7 +1170,9 @@ void CActiveAE::Configure(AEAudioFormat *desiredFmt)
 
   // resample buffers for sink
   if (m_sinkBuffers && 
-     (!CompareFormat(m_sinkBuffers->m_format,m_sinkFormat) || !CompareFormat(m_sinkBuffers->m_inputFormat, sinkInputFormat)))
+     (!CompareFormat(m_sinkBuffers->m_format,m_sinkFormat) ||
+      !CompareFormat(m_sinkBuffers->m_inputFormat, sinkInputFormat) ||
+      m_sinkBuffers->m_format.m_frames != m_sinkFormat.m_frames))
   {
     m_discardBufferPools.push_back(m_sinkBuffers);
     m_sinkBuffers = NULL;
@@ -1980,18 +1983,18 @@ bool CActiveAE::RunStages()
         }
       }
     }
+  }
 
-    // serve sink buffers
-    busy = m_sinkBuffers->ResampleBuffers();
-    while(!m_sinkBuffers->m_outputSamples.empty())
-    {
-      CSampleBuffer *out = NULL;
-      out = m_sinkBuffers->m_outputSamples.front();
-      m_sinkBuffers->m_outputSamples.pop_front();
-      m_sink.m_dataPort.SendOutMessage(CSinkDataProtocol::SAMPLE,
-          &out, sizeof(CSampleBuffer*));
-      busy = true;
-    }
+  // serve sink buffers
+  busy |= m_sinkBuffers->ResampleBuffers();
+  while(!m_sinkBuffers->m_outputSamples.empty())
+  {
+    CSampleBuffer *out = NULL;
+    out = m_sinkBuffers->m_outputSamples.front();
+    m_sinkBuffers->m_outputSamples.pop_front();
+    m_sink.m_dataPort.SendOutMessage(CSinkDataProtocol::SAMPLE,
+        &out, sizeof(CSampleBuffer*));
+    busy = true;
   }
 
   return busy;
@@ -2152,7 +2155,7 @@ bool CActiveAE::Initialize()
   }
 
   // hook into windowing for receiving display reset events
-#if defined(HAS_GLX) || defined(TARGET_DARWIN_OSX)
+#if defined(HAS_GLX) || defined(TARGET_DARWIN) 
   g_Windowing.Register(this);
 #endif
 
@@ -2643,6 +2646,9 @@ bool CActiveAE::ResampleSound(CActiveAESound *sound)
 
 IAEStream *CActiveAE::MakeStream(enum AEDataFormat dataFormat, unsigned int sampleRate, unsigned int encodedSampleRate, CAEChannelInfo channelLayout, unsigned int options)
 {
+  if (IsSuspended())
+    return NULL;
+
   //TODO: pass number of samples in audio packet
 
   AEAudioFormat format;

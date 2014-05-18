@@ -199,10 +199,19 @@ CUPnPServer::SetupIcons()
 {
     NPT_String file_root = CSpecialProtocol::TranslatePath("special://xbmc/media/").c_str();
     AddIcon(
-        PLT_DeviceIcon("image/png", 256, 256, 24, "/icon-flat-256x256.png"),
+        PLT_DeviceIcon("image/png", 256, 256, 8, "/icon256x256.png"),
         file_root);
     AddIcon(
-        PLT_DeviceIcon("image/png", 120, 120, 24, "/icon-flat-120x120.png"),
+        PLT_DeviceIcon("image/png", 120, 120, 8, "/icon120x120.png"),
+        file_root);
+    AddIcon(
+        PLT_DeviceIcon("image/png", 48, 48, 8, "/icon48x48.png"),
+        file_root);
+    AddIcon(
+        PLT_DeviceIcon("image/png", 32, 32, 8, "/icon32x32.png"),
+        file_root);
+    AddIcon(
+        PLT_DeviceIcon("image/png", 16, 16, 8, "/icon16x16.png"),
         file_root);
     return NPT_SUCCESS;
 }
@@ -746,7 +755,8 @@ CUPnPServer::BuildResponse(PLT_ActionReference&          action,
     // this isn't pretty but needed to properly hide the addons node from clients
     if (StringUtils::StartsWith(items.GetPath(), "library")) {
         for (int i=0; i<items.Size(); i++) {
-            if (StringUtils::StartsWith(items[i]->GetPath(), "addons"))
+            if (StringUtils::StartsWith(items[i]->GetPath(), "addons") ||
+                StringUtils::EndsWith(items[i]->GetPath(), "/addons.xml/"))
                 items.Remove(i);
         }
     }

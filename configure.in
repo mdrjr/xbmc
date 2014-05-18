@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([xbmc], [12.9.84], [http://issues.xbmc.org])
+AC_INIT([xbmc], [13.0.0], [http://issues.xbmc.org])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
 m4_include([m4/ax_prog_cc_for_build.m4])
@@ -703,7 +703,7 @@ case $host in
   powerpc64-*-linux-gnu*|powerpc64-*-linux-uclibc*)
      ARCH="powerpc64-linux"
      ;;
-  arm*-*-linux-gnu*)
+  arm*-*-linux-gnu*|arm*-*-linux-uclibc*)
      ARCH="arm"
      use_arch="arm"
      ffmpeg_target_os=linux
@@ -917,6 +917,7 @@ if test "$use_static_ffmpeg" = "yes"; then
   # ffmpeg may depend on gnutls and vorbisenc, we add those libs at the end of linker
   # command in order to resolve any missing symbols
   GNUTLS_ALL_LIBS=`${PKG_CONFIG} --static --libs-only-l --silence-errors gnutls`
+  HOGWEED_ALL_LIBS=`${PKG_CONFIG} --static --libs-only-l --silence-errors hogweed nettle`
   VORBISENC_ALL_LIBS=`${PKG_CONFIG} --static --libs-only-l --silence-errors vorbisenc`
 fi 
 
@@ -1565,20 +1566,27 @@ fi
 
 # libRTMP
 if test "$use_librtmp" != "no"; then
-  AC_CHECK_HEADERS([librtmp/log.h librtmp/amf.h librtmp/rtmp.h],,
-   [if test "$use_librtmp" = "yes"; then
-      AC_MSG_ERROR($librtmp_not_found)
-    elif test "$use_librtmp" != "no"; then
-      AC_MSG_NOTICE($librtmp_not_found)
-      use_librtmp="no"
-    fi
-   ])
-  if test "$use_librtmp" != "no"; then
-    XB_FIND_SONAME([RTMP], [rtmp], [use_librtmp])
-  fi
-  if test "$use_librtmp" != "no"; then
-    AC_DEFINE([HAS_LIBRTMP], [1], [Whether to use libRTMP library.])
-  fi
+  PKG_CHECK_MODULES([LIBRTMP], [librtmp],
+    [INCLUDES="$INCLUDES $LIBRTMP_CFLAGS"; LIBS="$LIBS $LIBRTMP_LIBS";
+      XB_FIND_SONAME([RTMP], [rtmp], [use_librtmp])
+      AC_DEFINE([HAS_LIBRTMP], [1], [Whether to use libRTMP library.])
+      RTMP_ALL_LIBS=$(${PKG_CONFIG} --static --libs-only-l --silence-errors librtmp)
+      test "$use_static_ffmpeg" = "yes" && LIBS="$LIBS $RTMP_ALL_LIBS"; LIBS="`echo $LIBS | sed 's/-lrtmp//g'`"],
+    [AC_CHECK_HEADERS([librtmp/log.h librtmp/amf.h librtmp/rtmp.h],,
+      [if test "$use_librtmp" = "yes"; then
+        AC_MSG_ERROR($librtmp_not_found)
+      elif test "$use_librtmp" != "no"; then
+        AC_MSG_NOTICE($librtmp_not_found)
+        use_librtmp="no"
+      fi
+      ])
+      if test "$use_librtmp" != "no"; then
+        XB_FIND_SONAME([RTMP], [rtmp], [use_librtmp])
+      fi
+      if test "$use_librtmp" != "no"; then
+        AC_DEFINE([HAS_LIBRTMP], [1], [Whether to use libRTMP library.])
+      fi
+    ])
 else
   AC_MSG_NOTICE($librtmp_disabled)
 fi
@@ -2730,6 +2738,7 @@ AC_SUBST(USE_EXYNOS4)
 AC_SUBST(USE_EXYNOS5)
 AC_SUBST(USE_HYBRIS)
 AC_SUBST(GNUTLS_ALL_LIBS)
+AC_SUBST(HOGWEED_ALL_LIBS)
 AC_SUBST(VORBISENC_ALL_LIBS)
 
 # pushd and popd are not available in other shells besides bash, so implement
