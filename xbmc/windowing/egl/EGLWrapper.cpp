@@ -17,6 +17,7 @@
  *  <http://www.gnu.org/licenses/>.
  *
  */
+
 #include "system.h"
 
 #ifdef HAS_EGL
@@ -87,6 +88,7 @@ bool CEGLWrapper::Initialize(const std::string &implementation)
       (nativeGuess = CreateEGLNativeType<CEGLNativeTypeRaspberryPI>(implementation)))
   {
     m_nativeTypes = nativeGuess;
+
     m_nativeTypes->Initialize();
     return true;
   }
@@ -269,7 +271,7 @@ bool CEGLWrapper::CreateSurface(EGLDisplay display, EGLConfig config, EGLSurface
   EGLNativeWindowType *nativeWindow=NULL;
   if (!m_nativeTypes->GetNativeWindow((XBNativeWindowType**)&nativeWindow))
     return false;
-  
+
   *surface = eglCreateWindowSurface(display, config, *nativeWindow, NULL);
   CheckError();
   return *surface != EGL_NO_SURFACE;
@@ -371,7 +373,6 @@ bool CEGLWrapper::SetVSync(EGLDisplay display, bool enable)
   EGLBoolean status;
   // depending how buffers are setup, eglSwapInterval
   // might fail so let caller decide if this is an error.
-  enable = true;
   status = eglSwapInterval(display, enable ? 1 : 0);
   CheckError();
   return status;

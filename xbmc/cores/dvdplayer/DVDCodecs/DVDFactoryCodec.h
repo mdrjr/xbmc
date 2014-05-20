@@ -20,8 +20,6 @@
  *
  */
 
-#define TARGET_HYBRIS 1
-
 #include <vector>
 #include "cores/VideoRenderers/RenderFormats.h"
 

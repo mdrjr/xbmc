@@ -251,9 +251,11 @@ CDVDVideoCodec* CDVDFactoryCodec::CreateVideoCodec(CDVDStreamInfo &hint, unsigne
 #endif
 
 #if defined(TARGET_HYBRIS)
+  // FIXME there should be a settings preference to enable Hybris decoder over native one
+  // currently MFC native decoders are preferred simply by being probed first
   if (!hint.software )
   {
-    if (hint.codec == CODEC_ID_H264 || hint.codec == CODEC_ID_MPEG2VIDEO || hint.codec == CODEC_ID_VC1)
+    if (hint.codec == AV_CODEC_ID_H264 || hint.codec == AV_CODEC_ID_MPEG2VIDEO || hint.codec == AC_CODEC_ID_VC1)
     {
       if ( (pCodec = OpenCodec(new CDVDVideoCodecHybris(), hint, options)) ) return pCodec;
     }

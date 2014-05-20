@@ -42,14 +42,15 @@ SRCS += DVDVideoCodecStageFright.cpp
 endif
 
 ifeq (@USE_EXYNOS4@,1)
-SRCS += DVDVideoCodecExynos4.cpp DVDVideoCodecExynos.cpp 
+SRCS += DVDVideoCodecExynos4.cpp DVDVideoCodecExynos.cpp
 endif
 ifeq (@USE_EXYNOS5@,1)
-SRCS += DVDVideoCodecExynos5.cpp DVDVideoCodecExynos.cpp 
+SRCS += DVDVideoCodecExynos5.cpp DVDVideoCodecExynos.cpp
 SRCS += deinterleave_chroma.neon.S
 endif
 
 LIB=Video.a
 
 include @abs_top_srcdir@/Makefile.include
--include $(patsubst %.cpp,%.P,$(patsubst %.c,%.P,$(patsubst %.S,,$(SRCS)))) 
+-include $(patsubst %.cpp,%.P,$(patsubst %.c,%.P,$(patsubst %.S,,$(SRCS))))
+

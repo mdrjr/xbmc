@@ -573,12 +573,6 @@ AC_ARG_ENABLE([external-libraries],
   [use_external_libraries=$enableval],
   [use_external_libraries=no])
 
-AC_ARG_ENABLE([external-ffmpeg],
-  [AS_HELP_STRING([--enable-external-ffmpeg],
-  [enable use of external ffmpeg libraries (default is no) 'Linux only'])],
-  [use_external_ffmpeg=$enableval],
-  [use_external_ffmpeg=$use_external_libraries])
-
 AC_ARG_ENABLE([libav-compat],
   [AS_HELP_STRING([--enable-libav-compat],
   [build a wrapper around libav to provide the functions needed by XBMC. This is
@@ -713,12 +707,8 @@ case $host in
      ARCH="arm"
      use_arch="arm"
      ffmpeg_target_os=linux
-     use_joystick=no
      use_neon=yes
      use_gles=yes
-     use_sdl=no
-     use_x11=no
-     use_wayland=no
      use_static_ffmpeg=yes
      ;;
   arm*-*linux-android*)
@@ -1772,9 +1762,9 @@ if test "x$use_libcec" != "xno"; then
   # libcec is dyloaded, so we need to check for its headers and link any depends.
   if test "x$use_libcec" != "xno"; then
     if test "x$use_libcec" != "xauto"; then
-      PKG_CHECK_MODULES([CEC],[libcec >= 1.6.0],,[use_libcec="no";AC_MSG_ERROR($libcec_disabled)])
+      PKG_CHECK_MODULES([CEC],[libcec >= 2.1.0],,[use_libcec="no";AC_MSG_ERROR($libcec_disabled)])
     else
-      PKG_CHECK_MODULES([CEC],[libcec >= 1.6.0],,[use_libcec="no";AC_MSG_RESULT($libcec_disabled)])
+      PKG_CHECK_MODULES([CEC],[libcec >= 2.1.0],,[use_libcec="no";AC_MSG_RESULT($libcec_disabled)])
     fi
 
     if test "x$use_libcec" != "xno"; then
