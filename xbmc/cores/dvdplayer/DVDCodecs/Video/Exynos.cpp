@@ -1,4 +1,4 @@
-#include "DVDVideoCodecExynos.h"
+#include "Exynos.h"
 
 #include "DVDCodecs/DVDCodecs.h"
 

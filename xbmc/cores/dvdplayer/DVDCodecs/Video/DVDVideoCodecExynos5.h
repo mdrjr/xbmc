@@ -20,7 +20,7 @@
  *
  */
 
-#include "DVDVideoCodecExynos.h"
+#include "Exynos.h"
 #include "DVDResource.h"
 #include "DVDStreamInfo.h"
 #include "utils/BitstreamConverter.h"
