@@ -20,18 +20,18 @@
  *
  */
 
-#define TARGET_HYBRIS 1
-
 #if defined(TARGET_HYBRIS)
 #include <hwcomposerwindow/hwcomposer_window.h>
 #include <hardware/hardware.h>
 #include <hardware/hwcomposer.h>
+#endif
 
 #include "EGLNativeType.h"
 #include "threads/Thread.h"
 
 class CEGLNativeTypeHybris;
 
+#if defined(TARGET_HYBRIS)
 class CHybrisVideoRenderer : public CThread
 {
 public:
@@ -46,6 +46,7 @@ private:
 protected:
   void Process();
 };
+#endif
 
 class CEGLNativeTypeHybris : public CEGLNativeType
 {
@@ -80,8 +81,6 @@ private:
   hwc_composer_device_1_t    *m_hwcDevicePtr;
   HWComposerNativeWindow     *m_hwNativeWindow;
   ANativeWindow              *m_swNativeWindow;
-#endif
   CHybrisVideoRenderer       *m_videoRenderThread;
-};
-
 #endif
+};
