@@ -29,15 +29,9 @@
 #include "DVDCodecs/DVDCodecs.h"
 #include "DVDCodecs/DVDCodecUtils.h"
 
-#define MAJOR_VERSION 13
-
 #include "settings/Settings.h"
-#if MAJOR_VERSION < 13
-	#include "settings/GUISettings.h"
-#else
-	#include "settings/DisplaySettings.h"
-	#include "settings/AdvancedSettings.h"
-#endif
+#include "settings/DisplaySettings.h"
+#include "settings/AdvancedSettings.h"
 #include "utils/fastmemcpy.h"
 
 #include <linux/LinuxV4l2.h>
@@ -56,7 +50,7 @@
 #define CLASSNAME "CDVDVideoCodecExynos5"
 
 #ifndef V4L2_PIX_FMT_NV12MT_16X16
-	#define V4L2_PIX_FMT_NV12MT_16X16  v4l2_fourcc('V', 'M', '1', '2') /* 12  Y/CbCr 4:2:0 16x16 macroblocks */
+#define V4L2_PIX_FMT_NV12MT_16X16  v4l2_fourcc('V', 'M', '1', '2') /* 12  Y/CbCr 4:2:0 16x16 macroblocks */
 #endif
 
 CDVDVideoCodecExynos5::CDVDVideoCodecExynos5() {

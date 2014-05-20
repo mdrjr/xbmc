@@ -29,15 +29,9 @@
 #include "DVDCodecs/DVDCodecs.h"
 #include "DVDCodecs/DVDCodecUtils.h"
 
-#define MAJOR_VERSION 13
-
 #include "settings/Settings.h"
-#if MAJOR_VERSION < 13
-	#include "settings/GUISettings.h"
-#else
-	#include "settings/DisplaySettings.h"
-	#include "settings/AdvancedSettings.h"
-#endif
+#include "settings/DisplaySettings.h"
+#include "settings/AdvancedSettings.h"
 #include "utils/fastmemcpy.h"
 
 #include <sys/mman.h>

@@ -31,9 +31,7 @@
 #include <thread>
 #include "guilib/GraphicContext.h"
 
-#ifndef V4L2_CAP_VIDEO_M2M_MPLANE
-  #define V4L2_CAP_VIDEO_M2M_MPLANE       0x00004000
-#endif
+#define memzero(x) memset(&(x), 0, sizeof (x))
 
 class CDVDVideoCodecExynos4 : public Exynos::CDVDVideoCodecExynos
 {
@@ -82,4 +80,3 @@ protected:
   size_t m_ptsReadIndex;
 };
 
-#define memzero(x) memset(&(x), 0, sizeof (x))
