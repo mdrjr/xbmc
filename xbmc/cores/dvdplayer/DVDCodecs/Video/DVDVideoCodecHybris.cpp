@@ -182,6 +182,7 @@ void CDVDVideoCodecHybris::Dispose() {
   while(!m_dts.empty())
     m_dts.pop();
 
+  if(!m_codec)return;
   media_codec_stop(m_codec);
   media_codec_release(m_codec);
   media_codec_delegate_destroy(m_codec);
