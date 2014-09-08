@@ -1473,7 +1473,7 @@ fi
 # samba
 if test "x$use_samba" != "xno"; then
   PKG_CHECK_MODULES([SAMBA], [smbclient],
-    [INCLUDES="$INCLUDES $SAMBA_CFLAGS"; LIBS="$LIBS $SAMBA_LIBS"],
+    [INCLUDES="$INCLUDES $SAMBA_CFLAGS"; LIBS="$SAMBA_LIBS $LIBS"],
     [AC_CHECK_LIB([smbclient], [main],,
       use_samba=no;AC_MSG_ERROR($missing_library))
       USE_LIBSMBCLIENT=0
