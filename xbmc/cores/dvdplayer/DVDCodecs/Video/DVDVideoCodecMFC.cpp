@@ -166,7 +166,7 @@ bool CDVDVideoCodecMFC::OpenDecoder()
         if (m_iDecoderHandle >= 0)
         {
           // MFC should at least support NV12MT format
-          return CheckDecoderFormats();
+          return true;
         }
       }
     }
@@ -200,7 +200,7 @@ bool CDVDVideoCodecMFC::CheckDecoderFormats()
     if (vid_fmtdesc.pixelformat == V4L2_PIX_FMT_NV12)
       m_hasNV12Support = true;
   }
-  return hasNV12MTSupport;
+  return true;
 }
 
 bool CDVDVideoCodecMFC::OpenConverter()
@@ -407,14 +407,6 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
   }
   CLog::Log(LOGDEBUG, "%s::%s - MFC OUTPUT <- %d header of size %d", CLASSNAME, __func__, ret, extraSize);
 
-  // STREAMON on MFC OUTPUT
-  if (!CLinuxV4L2::StreamOn(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, VIDIOC_STREAMON))
-  {
-    CLog::Log(LOGERROR, "%s::%s - MFC OUTPUT Failed to Stream ON, errno %d", CLASSNAME, __func__, errno);
-    return false;
-  }
-  CLog::Log(LOGDEBUG, "%s::%s - MFC OUTPUT Stream ON", CLASSNAME, __func__);
-
   // Setup MFC CAPTURE format
   if (m_hasNV12Support) //MFC>5
   {
@@ -429,6 +421,16 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options)
     }
     CLog::Log(LOGDEBUG, "%s::%s - MFC CAPTURE S_FMT: fmt 0x%x", CLASSNAME, __func__, fmt.fmt.pix_mp.pixelformat);
   }
+
+  // STREAMON on MFC OUTPUT
+  if (!CLinuxV4L2::StreamOn(m_iDecoderHandle, V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE, VIDIOC_STREAMON))
+  {
+    CLog::Log(LOGERROR, "%s::%s - MFC OUTPUT Failed to Stream ON, errno %d", CLASSNAME, __func__, errno);
+    return false;
+  }
+  CLog::Log(LOGDEBUG, "%s::%s - MFC OUTPUT Stream ON", CLASSNAME, __func__);
+
+
   // Get MFC CAPTURE picture format to check, and to setup FIMC converter if needed
   memzero(fmt);
   fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
