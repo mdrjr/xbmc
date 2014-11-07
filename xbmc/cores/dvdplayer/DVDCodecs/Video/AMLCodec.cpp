@@ -245,8 +245,9 @@ public:
 // same as AV_NOPTS_VALUE
 #define INT64_0         INT64_C(0x8000000000000000)
 
-#define EXTERNAL_PTS    (1)
-#define SYNC_OUTSIDE    (2)
+#define EXTERNAL_PTS        (1)
+#define SYNC_OUTSIDE        (2)
+#define USE_IDR_FRAMERATE   (4)
 
 // missing tags
 #define CODEC_TAG_VC_1  (0x312D4356)
@@ -1501,10 +1502,10 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
     case VFORMAT_H264:
     case VFORMAT_H264MVC:
       am_private->gcodec.format = VIDEO_DEC_FORMAT_H264;
-      am_private->gcodec.param  = (void*)EXTERNAL_PTS;
+      am_private->gcodec.param  = (void*)(EXTERNAL_PTS | USE_IDR_FRAMERATE);
       // h264 in an avi file
       if (m_hints.ptsinvalid)
-        am_private->gcodec.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE);
+        am_private->gcodec.param = (void*)(EXTERNAL_PTS | SYNC_OUTSIDE | USE_IDR_FRAMERATE);
       break;
     case VFORMAT_H264_4K2K:
       if (aml_get_device_type() == AML_DEVICE_TYPE_M8) {
