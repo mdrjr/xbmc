@@ -37,7 +37,9 @@
 #include "utils/Stopwatch.h"
 #include "threads/CriticalSection.h"
 #include "settings/lib/ISettingCallback.h"
-
+#include <X11/Xlib.h>
+#include <X11/keysym.h>
+#include <X11/Xutil.h>
 class IDispResource;
 
 class CWinSystemX11 : public CWinSystemBase, public ISettingCallback
