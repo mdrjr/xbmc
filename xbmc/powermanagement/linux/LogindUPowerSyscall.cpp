@@ -53,7 +53,7 @@ CLogindUPowerSyscall::CLogindUPowerSyscall()
   m_canPowerdown = LogindCheckCapability("CanPowerOff");
   m_canReboot    = LogindCheckCapability("CanReboot");
   m_canHibernate = LogindCheckCapability("CanHibernate");
-  m_canSuspend   = LogindCheckCapability("CanSuspend");
+  m_canSuspend   = false;
 
   InhibitDelayLock();
 
@@ -98,7 +98,7 @@ CLogindUPowerSyscall::~CLogindUPowerSyscall()
 
 bool CLogindUPowerSyscall::Powerdown()
 {
-  return LogindSetPowerState("PowerOff");
+  return Suspend();
 }
 
 bool CLogindUPowerSyscall::Reboot()

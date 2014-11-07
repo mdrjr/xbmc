@@ -242,6 +242,7 @@ KeyMap keyMap[] = {
   { KEY_RECORD        , XBMCK_RECORD      },
   { KEY_REWIND        , XBMCK_REWIND      },
   { KEY_PHONE         , XBMCK_PHONE       },
+  { KEY_HOMEPAGE      , XBMCK_BROWSER_HOME},
   { KEY_REFRESH       , XBMCK_SHUFFLE     },
   { KEY_SCROLLUP      , XBMCK_PAGEUP      },
   { KEY_SCROLLDOWN    , XBMCK_PAGEDOWN    },
