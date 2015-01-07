@@ -51,9 +51,9 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 
-// amcodec include
 extern "C" {
 #include <amcodec/codec.h>
+#include <libavutil/avutil.h>
 }  // extern "C"
 
 typedef struct {
@@ -92,19 +92,11 @@ public:
   virtual int codec_set_cntl_mode(codec_para_t *pcodec, unsigned int mode)=0;
   virtual int codec_set_cntl_avthresh(codec_para_t *pcodec, unsigned int avthresh)=0;
   virtual int codec_set_cntl_syncthresh(codec_para_t *pcodec, unsigned int syncthresh)=0;
-
-  // grab these from libamplayer
-  virtual int h263vld(unsigned char *inbuf, unsigned char *outbuf, int inbuf_len, int s263)=0;
-  virtual int decodeble_h263(unsigned char *buf)=0;
-
-  // grab this from amffmpeg so we do not have to load DllAvUtil
-  virtual AVRational av_d2q(double d, int max)=0;
 };
 
 class DllLibAmCodec : public DllDynamic, DllLibamCodecInterface
 {
-  // libamcodec is static linked into libamplayer.so
-  DECLARE_DLL_WRAPPER(DllLibAmCodec, "libamplayer.so")
+  DECLARE_DLL_WRAPPER(DllLibAmCodec, "libamcodec.so")
 
   DEFINE_METHOD1(int, codec_init,               (codec_para_t *p1))
   DEFINE_METHOD1(int, codec_close,              (codec_para_t *p1))
@@ -122,11 +114,6 @@ class DllLibAmCodec : public DllDynamic, DllLibamCodecInterface
   DEFINE_METHOD2(int, codec_set_cntl_avthresh,  (codec_para_t *p1, unsigned int p2))
   DEFINE_METHOD2(int, codec_set_cntl_syncthresh,(codec_para_t *p1, unsigned int p2))
 
-  DEFINE_METHOD4(int, h263vld,                  (unsigned char *p1, unsigned char *p2, int p3, int p4))
-  DEFINE_METHOD1(int, decodeble_h263,           (unsigned char *p1))
-
-  DEFINE_METHOD2(AVRational, av_d2q,            (double p1, int p2))
-
   BEGIN_METHOD_RESOLVE()
     RESOLVE_METHOD(codec_init)
     RESOLVE_METHOD(codec_close)
@@ -143,11 +130,6 @@ class DllLibAmCodec : public DllDynamic, DllLibamCodecInterface
     RESOLVE_METHOD(codec_set_cntl_mode)
     RESOLVE_METHOD(codec_set_cntl_avthresh)
     RESOLVE_METHOD(codec_set_cntl_syncthresh)
-
-    RESOLVE_METHOD(h263vld)
-    RESOLVE_METHOD(decodeble_h263)
-
-    RESOLVE_METHOD(av_d2q)
   END_METHOD_RESOLVE()
 
 public:
@@ -346,8 +328,6 @@ typedef struct am_private_t
   unsigned int      video_ratio64;
   unsigned int      video_rate;
   unsigned int      video_rotation_degree;
-  int               flv_flag;
-  int               h263_decodable;
   int               extrasize;
   uint8_t           *extradata;
   DllLibAmCodec     *m_dll;
@@ -440,7 +420,6 @@ static vformat_t codecid_to_vformat(enum AVCodecID id)
     case AV_CODEC_ID_H263I:
     case AV_CODEC_ID_MSMPEG4V2:
     case AV_CODEC_ID_MSMPEG4V3:
-    case AV_CODEC_ID_FLV1:
       format = VFORMAT_MPEG4;
       break;
     case AV_CODEC_ID_RV10:
@@ -1254,51 +1233,6 @@ int set_header_info(am_private_t *para)
       {
         return divx3_prefix(pkt);
       }
-      else if (para->video_codec_type == VIDEO_DEC_FORMAT_H263)
-      {
-        return PLAYER_UNSUPPORT;
-        unsigned char *vld_buf;
-        int vld_len, vld_buf_size = para->video_width * para->video_height * 2;
-
-        if (!pkt->data_size) {
-            return PLAYER_SUCCESS;
-        }
-
-        if ((pkt->data[0] == 0) && (pkt->data[1] == 0) && (pkt->data[2] == 1) && (pkt->data[3] == 0xb6)) {
-            return PLAYER_SUCCESS;
-        }
-
-        vld_buf = (unsigned char*)malloc(vld_buf_size);
-        if (!vld_buf) {
-            return PLAYER_NOMEM;
-        }
-
-        if (para->flv_flag) {
-            vld_len = para->m_dll->h263vld(pkt->data, vld_buf, pkt->data_size, 1);
-        } else {
-            if (0 == para->h263_decodable) {
-                para->h263_decodable = para->m_dll->decodeble_h263(pkt->data);
-                if (0 == para->h263_decodable) {
-                    CLog::Log(LOGDEBUG, "[%s]h263 unsupport video and audio, exit", __FUNCTION__);
-                    return PLAYER_UNSUPPORT;
-                }
-            }
-            vld_len = para->m_dll->h263vld(pkt->data, vld_buf, pkt->data_size, 0);
-        }
-
-        if (vld_len > 0) {
-            if (pkt->buf) {
-                free(pkt->buf);
-            }
-            pkt->buf = vld_buf;
-            pkt->buf_size = vld_buf_size;
-            pkt->data = pkt->buf;
-            pkt->data_size = vld_len;
-        } else {
-            free(vld_buf);
-            pkt->data_size = 0;
-        }
-      }
     } else if (para->video_format == VFORMAT_VC1) {
         if (para->video_codec_type == VIDEO_DEC_FORMAT_WMV3) {
             unsigned i, check_sum = 0, data_len = 0;
@@ -1491,21 +1425,15 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   am_private->video_pid        = hints.pid;
 
   // handle video ratio
-  AVRational video_ratio       = m_dll->av_d2q(1, SHRT_MAX);
+  AVRational video_ratio       = av_d2q(1, SHRT_MAX);
   //if (!hints.forced_aspect)
   //  video_ratio = m_dll->av_d2q(hints.aspect, SHRT_MAX);
   am_private->video_ratio      = ((int32_t)video_ratio.num << 16) | video_ratio.den;
   am_private->video_ratio64    = ((int64_t)video_ratio.num << 32) | video_ratio.den;
 
   // handle video rate
-  if (hints.rfpsrate > 0 && hints.rfpsscale != 0)
+  if (hints.fpsrate > 0 && hints.fpsscale != 0)
   {
-    // check ffmpeg r_frame_rate 1st
-    am_private->video_rate = 0.5 + (float)UNIT_FREQ * hints.rfpsscale / hints.rfpsrate;
-  }
-  else if (hints.fpsrate > 0 && hints.fpsscale != 0)
-  {
-    // then ffmpeg avg_frame_rate next
     am_private->video_rate = 0.5 + (float)UNIT_FREQ * hints.fpsscale / hints.fpsrate;
   }
 
@@ -1568,18 +1496,11 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   else
     am_private->video_codec_type = codec_tag_to_vdec_type(am_private->video_codec_id);
 
-  am_private->flv_flag = 0;
-  if (am_private->video_codec_id == AV_CODEC_ID_FLV1)
-  {
-    am_private->video_codec_tag = CODEC_TAG_F263;
-    am_private->flv_flag = 1;
-  }
-
   CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder "
     "hints.width(%d), hints.height(%d), hints.codec(%d), hints.codec_tag(%d), hints.pid(%d)",
     hints.width, hints.height, hints.codec, hints.codec_tag, hints.pid);
-  CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder hints.fpsrate(%d), hints.fpsscale(%d), hints.rfpsrate(%d), hints.rfpsscale(%d), video_rate(%d)",
-    hints.fpsrate, hints.fpsscale, hints.rfpsrate, hints.rfpsscale, am_private->video_rate);
+  CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder hints.fpsrate(%d), hints.fpsscale(%d), video_rate(%d)",
+    hints.fpsrate, hints.fpsscale, am_private->video_rate);
   CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder hints.aspect(%f), video_ratio.num(%d), video_ratio.den(%d)",
     hints.aspect, video_ratio.num, video_ratio.den);
   CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder hints.orientation(%d), hints.forced_aspect(%d), hints.extrasize(%d)",
@@ -2042,19 +1963,15 @@ void CAMLCodec::Process()
 
         double error = app_pts - (double)pts_video/PTS_FREQ;
         double abs_error = fabs(error);
-        if (abs_error > 0.125)
+        if (abs_error > 0.150)
         {
-          //CLog::Log(LOGDEBUG, "CAMLCodec::Process pts diff = %f", error);
-          if (abs_error > 0.150)
-          {
-            // big error so try to reset pts_pcrscr
-            SetVideoPtsSeconds(app_pts);
-          }
-          else
-          {
-            // small error so try to avoid a frame jump
-            SetVideoPtsSeconds((double)pts_video/PTS_FREQ + error/4);
-          }
+          // big error so try to reset pts_pcrscr
+          SetVideoPtsSeconds(app_pts);
+        }
+        else
+        {
+          // small error so try to avoid a frame jump
+          SetVideoPtsSeconds((double)pts_video/PTS_FREQ + error/4);
         }
       }
     }

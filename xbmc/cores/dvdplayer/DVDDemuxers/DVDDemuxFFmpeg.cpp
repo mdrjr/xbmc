@@ -540,10 +540,6 @@ void CDVDDemuxFFmpeg::Reset()
 
 void CDVDDemuxFFmpeg::Flush()
 {
-  // naughty usage of an internal ffmpeg function
-  if (m_pFormatContext)
-    av_read_frame_flush(m_pFormatContext);
-
   m_currentPts = DVD_NOPTS_VALUE;
 
   m_pkt.result = -1;
@@ -1124,34 +1120,25 @@ CDemuxStream* CDVDDemuxFFmpeg::AddStream(int iId)
 #else
         AVRational r_frame_rate = pStream->r_frame_rate;
 #endif
+        int rFrameRate = 0;
+        if (r_frame_rate.den && r_frame_rate.num)
+          rFrameRate = r_frame_rate.num / r_frame_rate.den;
+        bool rFrameRateValid = rFrameRate >= 5 && rFrameRate <= 100;
 
-        //average fps is more accurate for mkv files
-        if (m_bMatroska && pStream->avg_frame_rate.den && pStream->avg_frame_rate.num)
-        {
-          st->iFpsRate = pStream->avg_frame_rate.num;
-          st->iFpsScale = pStream->avg_frame_rate.den;
-        }
-        else if(r_frame_rate.den && r_frame_rate.num)
+        if (rFrameRateValid)
         {
           st->iFpsRate = r_frame_rate.num;
           st->iFpsScale = r_frame_rate.den;
+        }
+        else if(pStream->avg_frame_rate.den && pStream->avg_frame_rate.num)
+        {
+          st->iFpsRate = pStream->avg_frame_rate.num;
+          st->iFpsScale = pStream->avg_frame_rate.den;
         }
         else
         {
           st->iFpsRate  = 0;
           st->iFpsScale = 0;
-        }
-
-        // added for aml hw decoder, mkv frame-rate can be wrong.
-        if (r_frame_rate.den && r_frame_rate.num)
-        {
-          st->irFpsRate = r_frame_rate.num;
-          st->irFpsScale = r_frame_rate.den;
-        }
-        else
-        {
-          st->irFpsRate = 0;
-          st->irFpsScale = 0;
         }
 
         if (pStream->codec_info_nb_frames >  0
