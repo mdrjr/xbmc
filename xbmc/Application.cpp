@@ -259,8 +259,6 @@
 #include "pvr/windows/GUIWindowPVRSearch.h"
 #include "pvr/dialogs/GUIDialogPVRChannelManager.h"
 #include "pvr/dialogs/GUIDialogPVRChannelsOSD.h"
-#include "pvr/dialogs/GUIDialogPVRCutterOSD.h"
-#include "pvr/dialogs/GUIDialogPVRDirectorOSD.h"
 #include "pvr/dialogs/GUIDialogPVRGroupManager.h"
 #include "pvr/dialogs/GUIDialogPVRGuideInfo.h"
 #include "pvr/dialogs/GUIDialogPVRGuideOSD.h"
@@ -595,7 +593,7 @@ void CApplication::Preflight()
 #endif
 }
 
-bool CApplication::Create()
+bool CApplication::SetupNetwork()
 {
 #if defined(HAS_LINUX_NETWORK)
   m_network = new CNetworkLinux();
@@ -605,6 +603,12 @@ bool CApplication::Create()
   m_network = new CNetwork();
 #endif
 
+  return m_network != NULL;
+}
+
+bool CApplication::Create()
+{
+  SetupNetwork();
   Preflight();
 
   for (int i = RES_HDTV_1080i; i <= RES_PAL60_16x9; i++)
@@ -734,7 +738,9 @@ bool CApplication::Create()
 
   std::string executable = CUtil::ResolveExecutablePath();
   CLog::Log(LOGNOTICE, "The executable running is: %s", executable.c_str());
-  CLog::Log(LOGNOTICE, "Local hostname: %s", m_network->GetHostName().c_str());
+  std::string hostname("[unknown]");
+  m_network->GetHostName(hostname);
+  CLog::Log(LOGNOTICE, "Local hostname: %s", hostname.c_str());
   std::string lowerAppName = CCompileInfo::GetAppName();
   StringUtils::ToLower(lowerAppName);
   CLog::Log(LOGNOTICE, "Log File is located: %s%s.log", g_advancedSettings.m_logFolder.c_str(), lowerAppName.c_str());
@@ -1435,8 +1441,6 @@ bool CApplication::Initialize()
     g_windowManager.Add(new CGUIDialogPVRGuideSearch);
     g_windowManager.Add(new CGUIDialogPVRChannelsOSD);
     g_windowManager.Add(new CGUIDialogPVRGuideOSD);
-    g_windowManager.Add(new CGUIDialogPVRDirectorOSD);
-    g_windowManager.Add(new CGUIDialogPVRCutterOSD);
 
     g_windowManager.Add(new CGUIDialogSelect);
     g_windowManager.Add(new CGUIDialogMusicInfo);
@@ -2099,7 +2103,7 @@ bool CApplication::LoadUserWindows()
           // Root element should be <window>
           TiXmlElement* pRootElement = xmlDoc.RootElement();
           std::string strValue = pRootElement->Value();
-          if (!StringUtils::CompareNoCase(strValue, "window"))
+          if (!StringUtils::EqualsNoCase(strValue, "window"))
           {
             CLog::Log(LOGERROR, "file: %s doesnt contain <window>", skinFile.c_str());
             continue;
@@ -2589,8 +2593,12 @@ bool CApplication::OnAction(const CAction &action)
   // built in functions : execute the built-in
   if (action.GetID() == ACTION_BUILT_IN_FUNCTION)
   {
-    CBuiltins::Execute(action.GetName());
-    m_navigationTimer.StartZero();
+    if (!CBuiltins::IsSystemPowerdownCommand(action.GetName()) ||
+        g_PVRManager.CanSystemPowerdown())
+    {
+      CBuiltins::Execute(action.GetName());
+      m_navigationTimer.StartZero();
+    }
     return true;
   }
 
@@ -3371,8 +3379,6 @@ bool CApplication::Cleanup()
     g_windowManager.Delete(WINDOW_DIALOG_PVR_UPDATE_PROGRESS);
     g_windowManager.Delete(WINDOW_DIALOG_PVR_OSD_CHANNELS);
     g_windowManager.Delete(WINDOW_DIALOG_PVR_OSD_GUIDE);
-    g_windowManager.Delete(WINDOW_DIALOG_PVR_OSD_DIRECTOR);
-    g_windowManager.Delete(WINDOW_DIALOG_PVR_OSD_CUTTER);
     g_windowManager.Delete(WINDOW_DIALOG_OSD_TELETEXT);
 
     g_windowManager.Delete(WINDOW_DIALOG_TEXT_VIEWER);
@@ -3689,7 +3695,8 @@ PlayBackRet CApplication::PlayStack(const CFileItem& item, bool bRestart)
   {
     CStackDirectory dir;
     CFileItemList movieList;
-    dir.GetDirectory(item.GetURL(), movieList);
+    if (!dir.GetDirectory(item.GetURL(), movieList) || movieList.IsEmpty())
+      return PLAYBACK_FAIL;
 
     // first assume values passed to the stack
     int selectedFile = item.m_lStartPartNumber;
@@ -3756,7 +3763,8 @@ PlayBackRet CApplication::PlayStack(const CFileItem& item, bool bRestart)
 
     // calculate the total time of the stack
     CStackDirectory dir;
-    dir.GetDirectory(item.GetURL(), *m_currentStack);
+    if (!dir.GetDirectory(item.GetURL(), *m_currentStack) || m_currentStack->IsEmpty())
+      return PLAYBACK_FAIL;
     long totalTime = 0;
     for (int i = 0; i < m_currentStack->Size(); i++)
     {
@@ -3782,17 +3790,17 @@ PlayBackRet CApplication::PlayStack(const CFileItem& item, bool bRestart)
     {  // have our times now, so update the dB
       if (dbs.Open())
       {
-        if( !haveTimes )
+        if (!haveTimes && !times.empty())
           dbs.SetStackTimes(item.GetPath(), times);
 
-        if( item.m_lStartOffset == STARTOFFSET_RESUME )
+        if (item.m_lStartOffset == STARTOFFSET_RESUME)
         {
           // can only resume seek here, not dvdstate
           CBookmark bookmark;
           std::string path = item.GetPath();
           if (item.HasProperty("original_listitem_url") && URIUtils::IsPlugin(item.GetProperty("original_listitem_url").asString()))
             path = item.GetProperty("original_listitem_url").asString();
-          if( dbs.GetResumeBookMark(path, bookmark) )
+          if (dbs.GetResumeBookMark(path, bookmark))
             seconds = bookmark.timeInSeconds;
           else
             seconds = 0.0f;
@@ -4382,8 +4390,12 @@ void CApplication::UpdateFileState()
   if (m_progressTrackingItem->GetPath() != "" && m_progressTrackingItem->GetPath() != CurrentFile())
   {
     // Ignore for PVR channels, PerformChannelSwitch takes care of this.
-    // Also ignore playlists as correct video settings have already been saved in PlayFile() - we're causing off-by-1 errors here.
-    if (!m_progressTrackingItem->IsPVRChannel() && g_playlistPlayer.GetCurrentPlaylist() == PLAYLIST_NONE)
+    // Also ignore video playlists containing multiple items: video settings have already been saved in PlayFile()
+    // and we'd overwrite them with settings for the *previous* item.
+    // TODO: these "exceptions" should be removed and the whole logic of saving settings be revisited and
+    // possibly moved out of CApplication.  See PRs 5842, 5958, http://trac.kodi.tv/ticket/15704#comment:3
+    int playlist = g_playlistPlayer.GetCurrentPlaylist();
+    if (!m_progressTrackingItem->IsPVRChannel() && !(playlist == PLAYLIST_VIDEO && g_playlistPlayer.GetPlaylist(playlist).size() > 1))
       SaveFileState();
 
     // Reset tracking item
@@ -4412,7 +4424,7 @@ void CApplication::UpdateFileState()
       if (m_pPlayer->IsPlayingVideo())
       {
         /* Always update streamdetails, except for DVDs where we only update
-           streamdetails if title length > 15m (Should yield more correct info) */
+           streamdetails if total duration > 15m (Should yield more correct info) */
         if (!(m_progressTrackingItem->IsDiscImage() || m_progressTrackingItem->IsDVDFile()) || m_pPlayer->GetTotalTime() > 15*60*1000)
         {
           CStreamDetails details;
@@ -4723,7 +4735,7 @@ void CApplication::CheckShutdown()
       || m_musicInfoScanner->IsScanning()
       || m_videoInfoScanner->IsScanning()
       || g_windowManager.IsWindowActive(WINDOW_DIALOG_PROGRESS) // progress dialog is onscreen
-      || (CSettings::Get().GetBool("pvrmanager.enabled") && !g_PVRManager.IsIdle()))
+      || !g_PVRManager.CanSystemPowerdown(false))
   {
     m_shutdownTimer.StartZero();
     return;
@@ -4999,7 +5011,11 @@ bool CApplication::ExecuteXBMCAction(std::string actionStr)
 
   // user has asked for something to be executed
   if (CBuiltins::HasCommand(actionStr))
-    CBuiltins::Execute(actionStr);
+  {
+    if (!CBuiltins::IsSystemPowerdownCommand(actionStr) ||
+        g_PVRManager.CanSystemPowerdown())
+      CBuiltins::Execute(actionStr);
+  }
   else
   {
     // try translating the action from our ButtonTranslator

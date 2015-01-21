@@ -900,7 +900,8 @@ bool CPVRChannelGroup::Persist(void)
   bool bReturn(true);
   CSingleLock lock(m_critSection);
 
-  if (!HasChanges())
+  /* don't persist until the group is fully loaded and has changes */
+  if (!HasChanges() || !m_bLoaded)
     return bReturn;
 
   if (CPVRDatabase *database = GetPVRDatabase())
@@ -1096,12 +1097,12 @@ int CPVRChannelGroup::GetEPGNow(CFileItemList &results)
     if (!epg || !epg->HasValidEntries() || m_members.at(iChannelPtr).channel->IsHidden())
       continue;
 
-    CEpgInfoTag epgNow;
-    if (!epg->InfoTagNow(epgNow))
+    CEpgInfoTagPtr epgNow(epg->GetTagNow());
+    if (!epgNow)
       continue;
 
     CFileItemPtr entry(new CFileItem(epgNow));
-    entry->SetLabel2(epgNow.StartAsLocalTime().GetAsLocalizedTime("", false));
+    entry->SetLabel2(epgNow->StartAsLocalTime().GetAsLocalizedTime("", false));
     entry->SetPath(channel->Path());
     entry->SetArt("thumb", channel->IconPath());
     results.Add(entry);
@@ -1122,12 +1123,12 @@ int CPVRChannelGroup::GetEPGNext(CFileItemList &results)
     if (!epg || !epg->HasValidEntries() || m_members.at(iChannelPtr).channel->IsHidden())
       continue;
 
-    CEpgInfoTag epgNow;
-    if (!epg->InfoTagNext(epgNow))
+    CEpgInfoTagPtr epgNext(epg->GetTagNext());
+    if (!epgNext)
       continue;
 
-    CFileItemPtr entry(new CFileItem(epgNow));
-    entry->SetLabel2(epgNow.StartAsLocalTime().GetAsLocalizedTime("", false));
+    CFileItemPtr entry(new CFileItem(epgNext));
+    entry->SetLabel2(epgNext->StartAsLocalTime().GetAsLocalizedTime("", false));
     entry->SetPath(channel->Path());
     entry->SetArt("thumb", channel->IconPath());
     results.Add(entry);
@@ -1243,17 +1244,16 @@ time_t CPVRChannelGroup::LastWatched(void) const
 
 bool CPVRChannelGroup::SetLastWatched(time_t iLastWatched)
 {
-  CSingleLock lock(m_critSection);
-
-  if (m_iLastWatched != iLastWatched)
   {
-    /* update last watched  */
-    m_iLastWatched = iLastWatched;
-    SetChanged();
-    m_bChanged = true;
+    CSingleLock lock(m_critSection);
 
-    return true;
+    if (m_iLastWatched != iLastWatched)
+      m_iLastWatched = iLastWatched;
   }
+  
+  /* update the database immediately */
+  if (CPVRDatabase *database = GetPVRDatabase())
+    return database->UpdateLastWatched(*this);
 
   return false;
 }

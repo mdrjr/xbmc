@@ -216,7 +216,7 @@ void CPVRManager::OnSettingAction(const CSetting *setting)
   else if (settingId == "pvrclient.menuhook")
   {
     if (IsStarted())
-      Clients()->ProcessMenuHooks(-1, PVR_MENUHOOK_SETTING, NULL);
+      m_addons->ProcessMenuHooks(-1, PVR_MENUHOOK_SETTING, NULL);
   }
 }
 
@@ -236,8 +236,6 @@ bool CPVRManager::IsPVRWindowActive(void) const
       g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_CHANNELS) ||
       g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_GROUP_MANAGER) ||
       g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_GUIDE_INFO) ||
-      g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_CUTTER) ||
-      g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_DIRECTOR) ||
       g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_OSD_GUIDE) ||
       g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_GUIDE_SEARCH) ||
       g_windowManager.IsWindowActive(WINDOW_DIALOG_PVR_RECORDING_INFO) ||
@@ -862,19 +860,6 @@ void CPVRManager::ResetPlayingTag(void)
     m_guiInfo->ResetPlayingTag();
 }
 
-int CPVRManager::GetPreviousChannel(void)
-{
-  CPVRChannelPtr currentChannel;
-  if (GetCurrentChannel(currentChannel))
-  {
-    CPVRChannelGroupPtr selectedGroup = GetPlayingGroup(currentChannel->IsRadio());
-    CFileItemPtr channel = selectedGroup->GetLastPlayedChannel(currentChannel->ChannelID());
-    if (channel && channel->HasPVRChannelInfoTag())
-      return channel->GetPVRChannelInfoTag()->ChannelNumber();
-  }
-  return -1;
-}
-
 bool CPVRManager::ToggleRecordingOnChannel(unsigned int iChannelId)
 {
   bool bReturn = false;
@@ -943,7 +928,6 @@ bool CPVRManager::CheckParentalLock(const CPVRChannel &channel)
 bool CPVRManager::IsParentalLocked(const CPVRChannel &channel)
 {
   bool bReturn(false);
-  CSingleLock lock(m_managerStateMutex);
   if (!IsStarted())
     return bReturn;
   CPVRChannelPtr currentChannel(new CPVRChannel(false));
@@ -1145,22 +1129,21 @@ bool CPVRManager::UpdateItem(CFileItem& item)
   g_infoManager.SetCurrentItem(*m_currentFile);
 
   CPVRChannel* channelTag = item.GetPVRChannelInfoTag();
-  CEpgInfoTag epgTagNow;
-  bool bHasTagNow = channelTag->GetEPGNow(epgTagNow);
+  CEpgInfoTagPtr epgTagNow(channelTag->GetEPGNow());
 
   if (channelTag->IsRadio())
   {
     CMusicInfoTag* musictag = item.GetMusicInfoTag();
     if (musictag)
     {
-      musictag->SetTitle(bHasTagNow ?
-          epgTagNow.Title() :
+      musictag->SetTitle(epgTagNow ?
+          epgTagNow->Title() :
           CSettings::Get().GetBool("epg.hidenoinfoavailable") ?
               "" :
               g_localizeStrings.Get(19055)); // no information available
-      if (bHasTagNow)
-        musictag->SetGenre(epgTagNow.Genre());
-      musictag->SetDuration(bHasTagNow ? epgTagNow.GetDuration() : 3600);
+      if (epgTagNow)
+        musictag->SetGenre(epgTagNow->Genre());
+      musictag->SetDuration(epgTagNow ? epgTagNow->GetDuration() : 3600);
       musictag->SetURL(channelTag->Path());
       musictag->SetArtist(channelTag->ChannelName());
       musictag->SetAlbumArtist(channelTag->ChannelName());
@@ -1174,18 +1157,18 @@ bool CPVRManager::UpdateItem(CFileItem& item)
     CVideoInfoTag *videotag = item.GetVideoInfoTag();
     if (videotag)
     {
-      videotag->m_strTitle = bHasTagNow ?
-          epgTagNow.Title() :
+      videotag->m_strTitle = epgTagNow ?
+          epgTagNow->Title() :
           CSettings::Get().GetBool("epg.hidenoinfoavailable") ?
               "" :
               g_localizeStrings.Get(19055); // no information available
-      if (bHasTagNow)
-        videotag->m_genre = epgTagNow.Genre();
+      if (epgTagNow)
+        videotag->m_genre = epgTagNow->Genre();
       videotag->m_strPath = channelTag->Path();
       videotag->m_strFileNameAndPath = channelTag->Path();
-      videotag->m_strPlot = bHasTagNow ? epgTagNow.Plot() : "";
-      videotag->m_strPlotOutline = bHasTagNow ? epgTagNow.PlotOutline() : "";
-      videotag->m_iEpisode = bHasTagNow ? epgTagNow.EpisodeNum() : 0;
+      videotag->m_strPlot = epgTagNow ? epgTagNow->Plot() : "";
+      videotag->m_strPlotOutline = epgTagNow ? epgTagNow->PlotOutline() : "";
+      videotag->m_iEpisode = epgTagNow ? epgTagNow->EpisodeNum() : 0;
     }
   }
 
@@ -1414,6 +1397,26 @@ bool CPVRManager::IsIdle(void) const
   return true;
 }
 
+bool CPVRManager::CanSystemPowerdown(bool bAskUser /*= true*/) const
+{
+  bool bReturn(true);
+  if (IsStarted())
+  {
+    if (!m_addons->AllLocalBackendsIdle())
+    {
+      if (bAskUser)
+      {
+        // Inform user about PVR being busy. Ask if user wants to powerdown anyway.
+        bool bCanceled = false;
+        bReturn = CGUIDialogYesNo::ShowAndGetInput(19685, 19686, 0, 0, -1, -1, bCanceled, 10000);
+      }
+      else
+        bReturn = false; // do not powerdown (busy, but no user interaction requested).
+    }
+  }
+  return bReturn;
+}
+
 void CPVRManager::ShowPlayerInfo(int iTimeout)
 {
   if (IsStarted() && m_guiInfo)
@@ -1636,12 +1639,10 @@ void CPVRManager::UpdateLastWatched(CPVRChannel &channel)
   // NOTE: method could be called with a fileitem copy as argument so we need to obtain the right channel instance
   CPVRChannelPtr channelPtr = m_channelGroups->GetChannelById(channel.ChannelID());
   channelPtr->SetLastWatched(tNow);
-  channelPtr->Persist();
 
   // update last watched timestamp for group
   CPVRChannelGroupPtr group = GetPlayingGroup(channel.IsRadio());
   group->SetLastWatched(tNow);
-  group->Persist();
 
   /* update last played group */
   m_channelGroups->SetLastPlayedGroup(group);

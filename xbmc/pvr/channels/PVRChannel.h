@@ -32,6 +32,9 @@
 namespace EPG
 {
   class CEpg;
+  class CEpgInfoTag;
+  typedef boost::shared_ptr<CEpgInfoTag> CEpgInfoTagPtr;
+
 }
 
 namespace PVR
@@ -85,10 +88,9 @@ namespace PVR
 
     /*!
      * @brief Persists the changes in the database.
-     * @param bQueueWrite Queue the change and write changes later.
      * @return True if the changes were saved succesfully, false otherwise.
      */
-    bool Persist(bool bQueueWrite = false);
+    bool Persist();
 
     /*!
      * @return The identifier given to this channel by the TV database.
@@ -411,7 +413,7 @@ namespace PVR
      *
      * @return The EPG tag that is active on this channel now.
      */
-    bool GetEPGNow(EPG::CEpgInfoTag &tag) const;
+    EPG::CEpgInfoTagPtr GetEPGNow() const;
 
     /*!
      * @brief Get the EPG tag that is active on this channel next.
@@ -421,7 +423,7 @@ namespace PVR
      *
      * @return The EPG tag that is active on this channel next.
      */
-    bool GetEPGNext(EPG::CEpgInfoTag &tag) const;
+    EPG::CEpgInfoTagPtr GetEPGNext() const;
 
     /*!
      * @return Don't use an EPG for this channel if set to false.

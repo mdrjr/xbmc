@@ -195,11 +195,6 @@ namespace PVR
     CPVRDatabase *GetTVDatabase(void) const { return m_database; }
 
     /*!
-     * @brief Updates the recordings and the "now" and "next" timers.
-     */
-    void UpdateRecordingsCache(void);
-
-    /*!
      * @brief Get a GUIInfoManager character string.
      * @param dwInfo The string to get.
      * @return The requested string or an empty one if it wasn't found.
@@ -348,12 +343,6 @@ namespace PVR
     bool StartRecordingOnPlayingChannel(bool bOnOff);
 
     /*!
-     * @brief Get the channel number of the previously selected channel.
-     * @return The requested channel number or -1 if it wasn't found.
-     */
-    int GetPreviousChannel(void);
-
-    /*!
      * @brief Check whether there are active timers.
      * @return True if there are active timers, false otherwise.
      */
@@ -370,6 +359,18 @@ namespace PVR
      * @return True if there are no active timers/recordings/wake-ups within the configured time span.
      */
     bool IsIdle(void) const;
+
+    /*!
+     * @brief Check whether the system Kodi is running on can be powered down
+     *        (shutdown/reboot/suspend/hibernate) without stopping any active
+     *        recordings and/or without preventing the start of recordings
+     *        sheduled for now + pvrpowermanagement.backendidletime.
+     * @param bAskUser True to informs user in case of potential
+     *        data loss. User can decide to allow powerdown anyway. False to
+     *        not to ask user and to not confirm power down.
+     * @return True if system can be safely powered down, false otherwise.
+     */
+    bool CanSystemPowerdown(bool bAskUser = true) const;
 
     /*!
      * @brief Set the current playing group, used to load the right channel.
@@ -543,12 +544,6 @@ namespace PVR
     bool SetWakeupCommand(void);
 
     /*!
-     * @brief Wait until the pvr manager is loaded
-     * @return True when loaded, false otherwise
-     */
-    bool WaitUntilInitialised(void);
-
-    /*!
      * @brief Handle PVR specific cActions
      * @param action The action to process
      * @return True if action could be handled, false otherwise.
@@ -581,26 +576,6 @@ namespace PVR
      */
     bool Load(void);
     
-    /*!
-     * @brief Update all recordings.
-     */
-    void UpdateRecordings(void);
-
-    /*!
-     * @brief Update all timers.
-     */
-    void UpdateTimers(void);
-
-    /*!
-     * @brief Update all channels.
-     */
-    void UpdateChannels(void);
-
-    /*!
-     * @brief Update all channel groups and channels in them.
-     */
-    void UpdateChannelGroups(void);
-
     /*!
      * @brief Reset all properties.
      */

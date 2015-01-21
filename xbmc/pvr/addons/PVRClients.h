@@ -224,12 +224,6 @@ namespace PVR
     bool CanSeekStream(void) const;
 
     /*!
-     * @brief Get the properties of the current playing stream content.
-     * @return A pointer to the properties or NULL if no stream is playing.
-     */
-    PVR_STREAM_PROPERTIES GetCurrentStreamProperties(void);
-
-    /*!
      * @brief Get the input format name of the current playing stream content.
      * @return A pointer to the properties or NULL if no stream is playing.
      */
@@ -552,6 +546,12 @@ namespace PVR
 
     bool GetPlayingClient(PVR_CLIENT &client) const;
 
+    /*!
+     * @brief Checks whether all local pvr backends (if any) are idle (no recording active, ...).
+     * @return True if all local backends are idle or no local backends are connected, false otherwise.
+     */
+    bool AllLocalBackendsIdle() const;
+
     time_t GetPlayingTime() const;
     time_t GetBufferTimeStart() const;
     time_t GetBufferTimeEnd() const;
@@ -620,6 +620,8 @@ namespace PVR
     int RegisterClient(ADDON::AddonPtr client, bool* newRegistration = NULL);
 
     int GetClientId(const ADDON::AddonPtr client) const;
+
+    static bool NextEventWithinBackendIdleTime(const CPVRTimers& timers);
 
     bool                  m_bChannelScanRunning;      /*!< true when a channel scan is currently running, false otherwise */
     bool                  m_bIsSwitchingChannels;        /*!< true while switching channels */
