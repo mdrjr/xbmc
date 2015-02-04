@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([kodi], [14.9.701], [http://issues.kodi.tv])
+AC_INIT([kodi], [14.9.701], [http://trac.kodi.tv])
 AC_CONFIG_HEADERS([xbmc/config.h])
 AH_TOP([#pragma once])
 m4_include([m4/ax_prog_cc_for_build.m4])
@@ -688,6 +688,16 @@ case $host in
      use_x11=no
      use_wayland=no
      build_shared_lib=yes
+     ;;
+  mips*-*-linux-gnu*)
+     ARCH="mips"
+     use_arch="mips"
+     use_joystick=no
+     use_gles=no
+     use_gl=yes
+     use_sdl=yes
+     use_wayland=no
+     USE_STATIC_FFMPEG=1
      ;;
   *)
      AC_MSG_ERROR(unsupported host ($host))
@@ -2509,8 +2519,6 @@ OUTPUT_FILES="Makefile \
     tools/Linux/${APP_NAME_LC}.sh \
     tools/Linux/${APP_NAME_LC}-standalone.sh \
     tools/Linux/${APP_NAME_LC}-xsession.desktop \
-    tools/Linux/FEH.py \
-    tools/Linux/FEH-ARM.py \
     tools/EventClients/Makefile \
     tools/EventClients/Clients/OSXRemote/Makefile \
     xbmc/peripherals/bus/Makefile \

@@ -66,6 +66,7 @@ class CPlayerController;
 #include "threads/Thread.h"
 
 #include "ApplicationPlayer.h"
+#include "interfaces/IActionListener.h"
 
 class CSeekHandler;
 class CKaraokeLyricsManager;
@@ -74,6 +75,7 @@ class DPMSSupport;
 class CSplash;
 class CBookmark;
 class CNetwork;
+class CInputManager;
 
 namespace VIDEO
 {
@@ -115,6 +117,7 @@ class CApplication : public CXBApplicationEx, public IPlayerCallback, public IMs
                      public ISettingCallback, public ISettingsHandler, public ISubSettings
 {
   friend class CApplicationPlayer;
+  friend class CInputManager;
 public:
 
   enum ESERVERS
@@ -358,6 +361,8 @@ public:
     return m_bTestMode;
   }
 
+  bool IsAppFocused() const { return m_AppFocused; }
+
   void Minimize();
   bool ToggleDPMS(bool manual);
 
@@ -380,6 +385,17 @@ public:
   ReplayGainSettings& GetReplayGainSettings() { return m_replayGainSettings; }
 
   void SetLoggingIn(bool loggingIn) { m_loggingIn = loggingIn; }
+  
+  /*!
+   \brief Register an action listener.
+   \param listener The listener to register
+   */
+  void RegisterActionListener(IActionListener *listener);
+  /*!
+   \brief Unregister an action listener.
+   \param listener The listener to unregister
+   */
+  void UnregisterActionListener(IActionListener *listener);
 
 protected:
   virtual bool OnSettingsSaving() const;
@@ -393,6 +409,13 @@ protected:
 
   bool LoadSkin(const std::string& skinID);
   bool LoadSkin(const boost::shared_ptr<ADDON::CSkinInfo>& skin);
+  
+  /*!
+   \brief Delegates the action to all registered action handlers.
+   \param action The action
+   \return true, if the action was taken by one of the action listener.
+   */
+  bool NotifyActionListeners(const CAction &action) const;
 
   bool m_skinReverting;
 
@@ -468,12 +491,6 @@ protected:
   void VolumeChanged() const;
 
   PlayBackRet PlayStack(const CFileItem& item, bool bRestart);
-  bool ProcessMouse();
-  bool ProcessRemote(float frameTime);
-  bool ProcessGamepad(float frameTime);
-  bool ProcessEventServer(float frameTime);
-  bool ProcessPeripherals(float frameTime);
-  bool ProcessJoystickEvent(const std::string& joystickName, int button, short inputType, float fAmount, unsigned int holdTime = 0);
   bool ExecuteInputAction(const CAction &action);
   int  GetActiveWindowID(void);
 
@@ -493,11 +510,12 @@ protected:
   CPerformanceStats m_perfStats;
 #endif
 
-#ifdef HAS_EVENT_SERVER
-  std::map<std::string, std::map<int, float> > m_lastAxisMap;
-#endif
-
   ReplayGainSettings m_replayGainSettings;
+  
+  std::vector<IActionListener *> m_actionListeners;
+  
+private:
+  CCriticalSection                m_critSection;                 /*!< critical section for all changes to this class, except for changes to triggers */
 };
 
 XBMC_GLOBAL_REF(CApplication,g_application);

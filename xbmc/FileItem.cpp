@@ -816,6 +816,11 @@ bool CFileItem::IsLyrics() const
   return URIUtils::HasExtension(m_strPath, ".cdg|.lrc");
 }
 
+bool CFileItem::IsSubtitle() const
+{
+  return URIUtils::HasExtension(m_strPath, g_advancedSettings.m_subtitlesExtensions);
+}
+
 bool CFileItem::IsCUESheet() const
 {
   return URIUtils::HasExtension(m_strPath, ".cue");
@@ -1169,6 +1174,11 @@ void CFileItem::FillInDefaultIcon()
       { // archive
         SetIconImage("DefaultFile.png");
       }
+      else if ( IsPVRRecording() )
+      {
+        // PVR recording
+        SetIconImage("DefaultVideo.png");
+      }
       else if ( IsAudio() )
       {
         // audio
@@ -1177,10 +1187,6 @@ void CFileItem::FillInDefaultIcon()
       else if ( IsVideo() )
       {
         // video
-        SetIconImage("DefaultVideo.png");
-      }
-      else if (IsPVRRecording())
-      {
         SetIconImage("DefaultVideo.png");
       }
       else if (IsPVRTimer())

@@ -142,7 +142,7 @@ void CPVRClient::ResetProperties(int iClientId /* = PVR_INVALID_CLIENT_ID */)
 ADDON_STATUS CPVRClient::Create(int iClientId)
 {
   ADDON_STATUS status(ADDON_STATUS_UNKNOWN);
-  if (iClientId <= PVR_INVALID_CLIENT_ID || iClientId == PVR_VIRTUAL_CLIENT_ID)
+  if (iClientId <= PVR_INVALID_CLIENT_ID)
     return status;
 
   /* ensure that a previous instance is destroyed */
@@ -268,6 +268,7 @@ void CPVRClient::WriteClientTimerInfo(const CPVRTimerInfoTag &xbmcTimer, PVR_TIM
 
   memset(&addonTimer, 0, sizeof(addonTimer));
 
+  addonTimer.iClientIndex      = xbmcTimer.m_iClientIndex;
   addonTimer.state             = xbmcTimer.m_state;
   addonTimer.iClientChannelUid = xbmcTimer.m_iClientChannelUid;
   strncpy(addonTimer.strTitle, xbmcTimer.m_strTitle.c_str(), sizeof(addonTimer.strTitle) - 1);

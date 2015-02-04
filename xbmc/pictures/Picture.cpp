@@ -72,13 +72,13 @@ bool CPicture::CreateThumbnailFromSurface(const unsigned char *buffer, int width
   return ret;
 }
 
-CThumbnailWriter::CThumbnailWriter(unsigned char* buffer, int width, int height, int stride, const std::string& thumbFile)
+CThumbnailWriter::CThumbnailWriter(unsigned char* buffer, int width, int height, int stride, const std::string& thumbFile):
+  m_thumbFile(thumbFile)
 {
   m_buffer    = buffer;
   m_width     = width;
   m_height    = height;
   m_stride    = stride;
-  m_thumbFile = thumbFile;
 }
 
 CThumbnailWriter::~CThumbnailWriter()
@@ -210,8 +210,8 @@ bool CPicture::CreateTiledThumb(const std::vector<std::string> &files, const std
         }
       }
       delete[] scaled;
-      delete texture;
     }
+    delete texture;
   }
   // now save to a file
   if (success)

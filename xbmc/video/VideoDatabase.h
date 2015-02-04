@@ -459,6 +459,9 @@ public:
 
   void GetEpisodesByFile(const std::string& strFilenameAndPath, std::vector<CVideoInfoTag>& episodes);
 
+  int SetDetailsForItem(const CVideoInfoTag& details, const std::map<std::string, std::string> &artwork);
+  int SetDetailsForItem(int id, const MediaType& mediaType, const CVideoInfoTag& details, const std::map<std::string, std::string> &artwork);
+
   int SetDetailsForMovie(const std::string& strFilenameAndPath, const CVideoInfoTag& details, const std::map<std::string, std::string> &artwork, int idMovie = -1);
   int SetDetailsForMovieSet(const CVideoInfoTag& details, const std::map<std::string, std::string> &artwork, int idSet = -1);
 
@@ -869,6 +872,8 @@ private:
   virtual int GetSchemaVersion() const;
   virtual int GetExportVersion() const { return 1; };
   const char *GetBaseDBName() const { return "MyVideos"; };
+
+  void CleanupActorLinkTablePre91(const std::string &linkTable, const std::string &linkTableIdActor, const std::string &linkTableIdMedia, int idActor, const std::string &strActor);
 
   void ConstructPath(std::string& strDest, const std::string& strPath, const std::string& strFileName);
   void SplitPath(const std::string& strFileNameAndPath, std::string& strPath, std::string& strFileName);
