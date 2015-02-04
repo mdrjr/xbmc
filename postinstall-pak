@@ -1,0 +1,13 @@
+#!/bin/bash
+# Alsa Fix
+echo "pcm.!default {" > /etc/asound.conf
+echo "       type hw" >> /etc/asound.conf
+echo "        card 0" >> /etc/asound.conf
+echo "        device 1" >> /etc/asound.conf
+echo "        format S16_LE" >> /etc/asound.conf
+echo "}" >> /etc/asound.conf
+echo "" >> /etc/asound.conf
+echo "ctl.!default {" >> /etc/asound.conf
+echo "        type hw" >> /etc/asound.conf
+echo "        card 0" >> /etc/asound.conf
+echo "}" >> /etc/asound.conf
