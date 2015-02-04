@@ -118,9 +118,9 @@ bool CDVDVideoCodecAmlogic::Open(CDVDStreamInfo &hints, CDVDCodecOptions &option
     case AV_CODEC_ID_RV20:
     case AV_CODEC_ID_RV30:
     case AV_CODEC_ID_RV40:
-      // m_pFormatName = "am-rv";
+      m_pFormatName = "am-rv";
       // rmvb is not handled well by amcodec
-      return false;
+      //return false;
       break;
     case AV_CODEC_ID_VC1:
       m_pFormatName = "am-vc1";
