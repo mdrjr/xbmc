@@ -28,6 +28,8 @@ LIBDIR="@libdir@"
 CRASHLOG_DIR=${CRASHLOG_DIR:-$HOME}
 USERDATA_DIR="${HOME}/.${bin_name}"
 
+# Kill pactl on start
+pactl exit
 
 # Check for some options used by this script
 while [ "$#" -gt "0" ]
@@ -167,4 +169,7 @@ do
   fi
 done
 
+# Restart Pulse so audio can be fixed on Ubuntu
+/usr/bin/pulseaudio --start --log-target=syslog
+ 
 exit $RET
