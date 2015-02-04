@@ -29,6 +29,7 @@ CRASHLOG_DIR=${CRASHLOG_DIR:-$HOME}
 USERDATA_DIR="${HOME}/.${bin_name}"
 
 # Kill pactl on start
+echo "autospawn = no" > $HOME/.config/pulse/client.conf
 pactl exit
 
 # Check for some options used by this script
@@ -165,6 +166,7 @@ do
 done
 
 # Restart Pulse so audio can be fixed on Ubuntu
+rm -fr $HOME/.config/pulse/client.conf
 /usr/bin/pulseaudio --start --log-target=syslog
  
 exit $RET
