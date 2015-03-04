@@ -37,6 +37,8 @@
 #include "utils/XBMCTinyXML.h"
 #include "utils/XMLUtils.h"
 
+#include <algorithm>
+
 using namespace std;
 using namespace PVR;
 
@@ -196,6 +198,7 @@ void CLangInfo::CRegion::SetGlobalLocale()
     strLocale = "C";
   }
 
+  g_langInfo.m_locale = current_locale; // TODO: move to CLangInfo class
   locale::global(current_locale);
 #endif
   g_charsetConverter.resetSystemCharset();
@@ -419,6 +422,8 @@ void CLangInfo::SetDefaults()
 
   // Set the default region, we may be unable to load langinfo.xml
   m_currentRegion=&m_defaultRegion;
+
+  m_locale = std::locale::classic();
   
   m_languageCodeGeneral = "eng";
 }
@@ -530,12 +535,9 @@ const std::string CLangInfo::GetDVDSubtitleLanguage() const
   return code;
 }
 
-const std::string CLangInfo::GetLanguageLocale(bool twochar /* = false */) const
+const std::string& CLangInfo::GetLanguageLocale() const
 {
-  if (twochar)
-    return m_currentRegion->m_strLangLocaleCodeTwoChar;
-
-  return m_currentRegion->m_strLangLocaleName;
+  return m_currentRegion->m_strLangLocaleCodeTwoChar;
 }
 
 const std::string& CLangInfo::GetRegionLocale() const

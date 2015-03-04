@@ -26,12 +26,11 @@
 #include "dialogs/GUIDialogKaiToast.h"
 #include "dialogs/GUIDialogOK.h"
 #include "dialogs/GUIDialogYesNo.h"
+#include "dialogs/GUIDialogSelect.h"
 #include "filesystem/StackDirectory.h"
-#include "guilib/Key.h"
+#include "input/Key.h"
 #include "guilib/GUIMessage.h"
 #include "guilib/GUIWindowManager.h"
-#include "dialogs/GUIDialogKaiToast.h"
-#include "dialogs/GUIDialogSelect.h"
 #include "pvr/PVRManager.h"
 #include "pvr/addons/PVRClients.h"
 #include "pvr/dialogs/GUIDialogPVRGuideInfo.h"
@@ -178,7 +177,9 @@ bool CGUIWindowPVRBase::OnContextButton(int itemNumber, CONTEXT_BUTTON button)
           g_PVRClients->ProcessMenuHooks(item->GetEPGInfoTag()->ChannelTag()->ClientID(), PVR_MENUHOOK_EPG, item.get());
         else if (item->IsPVRChannel())
           g_PVRClients->ProcessMenuHooks(item->GetPVRChannelInfoTag()->ClientID(), PVR_MENUHOOK_CHANNEL, item.get());
-        else if (item->IsPVRRecording())
+        else if (item->IsDeletedPVRRecording())
+          g_PVRClients->ProcessMenuHooks(item->GetPVRRecordingInfoTag()->m_iClientId, PVR_MENUHOOK_DELETED_RECORDING, item.get());
+        else if (item->IsUsablePVRRecording())
           g_PVRClients->ProcessMenuHooks(item->GetPVRRecordingInfoTag()->m_iClientId, PVR_MENUHOOK_RECORDING, item.get());
         else if (item->IsPVRTimer())
           g_PVRClients->ProcessMenuHooks(item->GetPVRTimerInfoTag()->m_iClientId, PVR_MENUHOOK_TIMER, item.get());
@@ -289,16 +290,16 @@ bool CGUIWindowPVRBase::PlayFile(CFileItem *item, bool bPlayMinimized /* = false
   {
     bool bSwitchSuccessful(false);
 
-    CPVRChannel *channel = item->HasPVRChannelInfoTag() ? item->GetPVRChannelInfoTag() : NULL;
+    CPVRChannelPtr channel(item->GetPVRChannelInfoTag());
 
-    if (channel && g_PVRManager.CheckParentalLock(*channel))
+    if (channel && g_PVRManager.CheckParentalLock(channel))
     {
       /* try a fast switch */
-      if (channel && (g_PVRManager.IsPlayingTV() || g_PVRManager.IsPlayingRadio()) &&
+      if ((g_PVRManager.IsPlayingTV() || g_PVRManager.IsPlayingRadio()) &&
          (channel->IsRadio() == g_PVRManager.IsPlayingRadio()))
       {
         if (channel->StreamURL().empty())
-          bSwitchSuccessful = g_application.m_pPlayer->SwitchChannel(*channel);
+          bSwitchSuccessful = g_application.m_pPlayer->SwitchChannel(channel);
       }
 
       if (!bSwitchSuccessful)
@@ -333,7 +334,7 @@ bool CGUIWindowPVRBase::StartRecordFile(const CFileItem &item)
   const CEpgInfoTagPtr tag = item.GetEPGInfoTag();
   CPVRChannelPtr channel = tag->ChannelTag();
 
-  if (!channel || !g_PVRManager.CheckParentalLock(*channel))
+  if (!channel || !g_PVRManager.CheckParentalLock(channel))
     return false;
 
   CFileItemPtr timer = g_PVRTimers->GetTimerForEpgTag(&item);
@@ -356,12 +357,11 @@ bool CGUIWindowPVRBase::StartRecordFile(const CFileItem &item)
   if (!pDialog->IsConfirmed())
     return false;
 
-  CPVRTimerInfoTag *newTimer = CPVRTimerInfoTag::CreateFromEpg(*tag);
+  CPVRTimerInfoTagPtr newTimer = CPVRTimerInfoTag::CreateFromEpg(tag);
   bool bReturn(false);
   if (newTimer)
   {
-    bReturn = g_PVRTimers->AddTimer(*newTimer);
-    delete newTimer;
+    bReturn = g_PVRTimers->AddTimer(newTimer);
   }
   return bReturn;
 }
@@ -459,20 +459,20 @@ void CGUIWindowPVRBase::ShowEPGInfo(CFileItem *item)
 {
   CFileItem *tag = NULL;
   bool bHasChannel(false);
-  CPVRChannel channel;
+  CPVRChannelPtr channel;
   if (item->IsEPG())
   {
     tag = new CFileItem(*item);
     if (item->GetEPGInfoTag()->HasPVRChannel())
     {
-      channel = *item->GetEPGInfoTag()->ChannelTag();
+      channel = item->GetEPGInfoTag()->ChannelTag();
       bHasChannel = true;
     }
   }
   else if (item->IsPVRChannel())
   {
     CEpgInfoTagPtr epgnow(item->GetPVRChannelInfoTag()->GetEPGNow());
-    channel = *item->GetPVRChannelInfoTag();
+    channel = item->GetPVRChannelInfoTag();
     bHasChannel = true;
     if (!epgnow)
     {
@@ -513,9 +513,9 @@ bool CGUIWindowPVRBase::ActionInputChannelNumber(int input)
           {
             CGUIEPGGridContainer* epgGridContainer = (CGUIEPGGridContainer*) GetControl(m_viewControl.GetCurrentControl());
             if ((*it)->HasEPGInfoTag() && (*it)->GetEPGInfoTag()->HasPVRChannel())
-              epgGridContainer->SetChannel(*(*it)->GetEPGInfoTag()->ChannelTag());
+              epgGridContainer->SetChannel((*it)->GetEPGInfoTag()->ChannelTag());
             else
-              epgGridContainer->SetChannel(*(*it)->GetPVRChannelInfoTag());
+              epgGridContainer->SetChannel((*it)->GetPVRChannelInfoTag());
           }
           else
             m_viewControl.SetSelectedItem(itemIndex);
@@ -544,14 +544,14 @@ bool CGUIWindowPVRBase::ActionPlayEpg(CFileItem *item)
   if (epgTag && epgTag->HasPVRChannel())
     channel = epgTag->ChannelTag();
 
-  if (!channel || !g_PVRManager.CheckParentalLock(*channel))
+  if (!channel || !g_PVRManager.CheckParentalLock(channel))
     return false;
 
   CFileItem fileItem;
   if (epgTag->HasRecording())
-    fileItem = CFileItem(*epgTag->Recording());
+    fileItem = CFileItem(epgTag->Recording());
   else
-    fileItem = CFileItem(*channel);
+    fileItem = CFileItem(channel);
 
   g_application.SwitchToFullScreen();
   if (!PlayFile(&fileItem))
@@ -567,7 +567,7 @@ bool CGUIWindowPVRBase::ActionPlayEpg(CFileItem *item)
 
 bool CGUIWindowPVRBase::ActionDeleteChannel(CFileItem *item)
 {
-  CPVRChannel *channel = item->GetPVRChannelInfoTag();
+  CPVRChannelPtr channel(item->GetPVRChannelInfoTag());
 
   /* check if the channel tag is valid */
   if (!channel || channel->ChannelNumber() <= 0)
@@ -587,7 +587,7 @@ bool CGUIWindowPVRBase::ActionDeleteChannel(CFileItem *item)
   if (!pDialog->IsConfirmed())
     return false;
 
-  g_PVRChannelGroups->GetGroupAll(channel->IsRadio())->RemoveFromGroup(*channel);
+  g_PVRChannelGroups->GetGroupAll(channel->IsRadio())->RemoveFromGroup(channel);
   Refresh(true);
 
   return true;
@@ -602,7 +602,7 @@ bool CGUIWindowPVRBase::ActionRecord(CFileItem *item)
     return bReturn;
 
   CPVRChannelPtr channel = epgTag->ChannelTag();
-  if (!channel || !g_PVRManager.CheckParentalLock(*channel))
+  if (!channel || !g_PVRManager.CheckParentalLock(channel))
     return bReturn;
 
   if (epgTag->Timer() == NULL)
@@ -622,11 +622,10 @@ bool CGUIWindowPVRBase::ActionRecord(CFileItem *item)
     if (!pDialog->IsConfirmed())
       return bReturn;
 
-    CPVRTimerInfoTag *newTimer = CPVRTimerInfoTag::CreateFromEpg(*epgTag);
+    CPVRTimerInfoTagPtr newTimer = CPVRTimerInfoTag::CreateFromEpg(epgTag);
     if (newTimer)
     {
-      bReturn = g_PVRTimers->AddTimer(*newTimer);
-      delete newTimer;
+      bReturn = g_PVRTimers->AddTimer(newTimer);
     }
     else
     {
@@ -644,7 +643,8 @@ bool CGUIWindowPVRBase::ActionRecord(CFileItem *item)
 
 bool CGUIWindowPVRBase::UpdateEpgForChannel(CFileItem *item)
 {
-  CPVRChannel *channel = item->GetPVRChannelInfoTag();
+  CPVRChannelPtr channel(item->GetPVRChannelInfoTag());
+
   CEpg *epg = channel->GetEPG();
   if (!epg)
     return false;

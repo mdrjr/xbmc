@@ -33,6 +33,7 @@
 
 #include "OMXClock.h"
 #include "xbmc/linux/RBP.h"
+#include <cassert>
 
 #ifdef TARGET_LINUX
 #include "XMemUtils.h"
@@ -419,7 +420,7 @@ void COMXCoreComponent::FlushAll()
 
 void COMXCoreComponent::FlushInput()
 {
-  if(!m_handle)
+  if(!m_handle || m_resource_error)
     return;
 
   OMX_ERRORTYPE omx_err = OMX_SendCommand(m_handle, OMX_CommandFlush, m_input_port, NULL);
@@ -434,7 +435,7 @@ void COMXCoreComponent::FlushInput()
 
 void COMXCoreComponent::FlushOutput()
 {
-  if(!m_handle)
+  if(!m_handle || m_resource_error)
     return;
 
   OMX_ERRORTYPE omx_err = OMX_SendCommand(m_handle, OMX_CommandFlush, m_output_port, NULL);

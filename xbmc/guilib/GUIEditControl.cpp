@@ -24,7 +24,7 @@
 #include "GUIKeyboardFactory.h"
 #include "dialogs/GUIDialogNumeric.h"
 #include "input/XBMC_vkeys.h"
-#include "Key.h"
+#include "input/Key.h"
 #include "LocalizeStrings.h"
 #include "XBDateTime.h"
 #include "windowing/WindowingFactory.h"
@@ -746,4 +746,15 @@ void CGUIEditControl::SetFocus(bool focus)
   m_smsTimer.Stop();
   g_Windowing.EnableTextInput(focus);
   CGUIControl::SetFocus(focus);
+  SetInvalid();
+}
+
+std::string CGUIEditControl::GetDescriptionByIndex(int index) const
+{
+  if (index == 0)
+    return GetDescription();
+  else if(index == 1)
+    return GetLabel2();
+  
+  return "";
 }

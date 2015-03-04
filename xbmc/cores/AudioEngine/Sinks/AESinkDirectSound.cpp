@@ -20,6 +20,8 @@
 
 #define INITGUID
 
+#include <algorithm>
+
 #include "AESinkDirectSound.h"
 #include "utils/log.h"
 #include <initguid.h>
@@ -206,6 +208,10 @@ bool CAESinkDirectSound::Initialize(AEAudioFormat &format, std::string &device)
   }
 
   WAVEFORMATEXTENSIBLE wfxex = {0};
+
+  // clamp samplerate to a minimum
+  if (format.m_sampleRate < 44100)
+    format.m_sampleRate = 44100;
 
   //fill waveformatex
   ZeroMemory(&wfxex, sizeof(WAVEFORMATEXTENSIBLE));

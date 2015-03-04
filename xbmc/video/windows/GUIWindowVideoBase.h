@@ -49,11 +49,7 @@ public:
   static bool HasResumeItemOffset(const CFileItem *item);
 
   void AddToDatabase(int iItem);
-  virtual void OnInfo(CFileItem* pItem, const ADDON::ScraperPtr& scraper);
-
-  /*! \brief Show dialog allowing selection of wanted playback item */
-  static bool ShowPlaySelection(CFileItemPtr& item);
-  static bool ShowPlaySelection(CFileItemPtr& item, const std::string& directory);
+  virtual void OnInfo(CFileItem* pItem, ADDON::ScraperPtr& scraper);
 
 
   /*! \brief Show the resume menu for this item (if it has a resume bookmark)

@@ -21,7 +21,7 @@
 #include "AndroidKey.h"
 #include "AndroidExtra.h"
 #include "XBMCApp.h"
-#include "guilib/Key.h"
+#include "input/Key.h"
 #include "windowing/WinEvents.h"
 #include "android/jni/KeyCharacterMap.h"
 
@@ -152,7 +152,16 @@ static KeyMap keyMap[] = {
   { AKEYCODE_INSERT          , XBMCK_INSERT },
   { AKEYCODE_FORWARD         , XBMCK_MEDIA_FASTFORWARD },
   { AKEYCODE_MEDIA_PLAY      , XBMCK_MEDIA_PLAY_PAUSE },
+  { AKEYCODE_MEDIA_PAUSE     , XBMCK_MEDIA_PLAY_PAUSE },
+  { AKEYCODE_MEDIA_RECORD    , XBMCK_RECORD },
   { AKEYCODE_MEDIA_EJECT     , XBMCK_EJECT },
+  { AKEYCODE_GUIDE           , XBMCK_GUIDE },
+  { AKEYCODE_SETTINGS        , XBMCK_SETTINGS },
+  { AKEYCODE_INFO            , XBMCK_INFO },
+  { AKEYCODE_PROG_RED        , XBMCK_RED },
+  { AKEYCODE_PROG_GREEN      , XBMCK_GREEN },
+  { AKEYCODE_PROG_YELLOW     , XBMCK_YELLOW },
+  { AKEYCODE_PROG_BLUE       , XBMCK_BLUE },
 };
 
 bool CAndroidKey::onKeyboardEvent(AInputEvent *event)

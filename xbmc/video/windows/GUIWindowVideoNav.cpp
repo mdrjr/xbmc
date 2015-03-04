@@ -47,7 +47,7 @@
 #include "settings/MediaSettings.h"
 #include "settings/MediaSourceSettings.h"
 #include "settings/Settings.h"
-#include "guilib/Key.h"
+#include "input/Key.h"
 #include "guilib/LocalizeStrings.h"
 #include "storage/MediaManager.h"
 #include "utils/LegacyPathTranslation.h"
@@ -59,6 +59,7 @@
 #include "video/VideoInfoScanner.h"
 #include "video/dialogs/GUIDialogVideoInfo.h"
 #include "pvr/recordings/PVRRecording.h"
+#include "ContextMenuManager.h"
 
 using namespace XFILE;
 using namespace VIDEODATABASEDIRECTORY;
@@ -192,7 +193,6 @@ bool CGUIWindowVideoNav::OnMessage(CGUIMessage& message)
     }
     break;
     // update the display
-    case GUI_MSG_SCAN_FINISHED:
     case GUI_MSG_REFRESH_THUMBS:
       Refresh();
       break;
@@ -267,6 +267,114 @@ std::string CGUIWindowVideoNav::GetQuickpathName(const std::string& strPath) con
     CLog::Log(LOGERROR, "  CGUIWindowVideoNav::GetQuickpathName: Unknown parameter (%s)", strPath.c_str());
     return strPath;
   }
+}
+
+SelectFirstUnwatchedItem CGUIWindowVideoNav::GetSettingSelectFirstUnwatchedItem()
+{
+  if (m_vecItems->IsVideoDb())
+  {
+    NODE_TYPE nodeType = CVideoDatabaseDirectory::GetDirectoryChildType(m_vecItems->GetPath());
+
+    if (nodeType == NODE_TYPE_SEASONS || nodeType == NODE_TYPE_EPISODES)
+    {
+      int iValue = CSettings::Get().GetInt("videolibrary.tvshowsselectfirstunwatcheditem");
+      if (iValue >= SelectFirstUnwatchedItem::NEVER && iValue <= SelectFirstUnwatchedItem::ALWAYS)
+        return (SelectFirstUnwatchedItem)iValue;
+    }
+  }
+
+  return SelectFirstUnwatchedItem::NEVER;
+}
+
+IncludeAllSeasonsAndSpecials CGUIWindowVideoNav::GetSettingIncludeAllSeasonsAndSpecials()
+{
+  int iValue = CSettings::Get().GetInt("videolibrary.tvshowsincludeallseasonsandspecials");
+  if (iValue >= IncludeAllSeasonsAndSpecials::NEITHER && iValue <= IncludeAllSeasonsAndSpecials::SPECIALS)
+    return (IncludeAllSeasonsAndSpecials)iValue;
+
+  return IncludeAllSeasonsAndSpecials::NEITHER;
+}
+
+int CGUIWindowVideoNav::GetFirstUnwatchedItemIndex(bool includeAllSeasons, bool includeSpecials)
+{
+  int iIndex = 0;
+  int iUnwatchedSeason = INT_MAX;
+
+  // Run through the list of items and find the season number of the first season with unwatched episodes
+  for (int i = 0; i < m_vecItems->Size(); ++i)
+  {
+    CFileItemPtr pItem = m_vecItems->Get(i);
+    if (pItem->IsParentFolder() || !pItem->HasVideoInfoTag())
+      continue;
+
+    CVideoInfoTag *pTag = pItem->GetVideoInfoTag();
+
+    if ((!includeAllSeasons && pTag->m_iSeason < 0) || (!includeSpecials && pTag->m_iSeason == 0))
+      continue;
+
+    // Is the season unwatched, and is its season number lower than the currently identified
+    // first unwatched season
+    if (pTag->m_playCount == 0 && pTag->m_iSeason < iUnwatchedSeason)
+    {
+      iUnwatchedSeason = pTag->m_iSeason;
+      iIndex = i;
+    }
+  }
+
+  NODE_TYPE nodeType = CVideoDatabaseDirectory::GetDirectoryChildType(m_vecItems->GetPath());
+  if (nodeType == NODE_TYPE::NODE_TYPE_EPISODES)
+  {
+    iIndex = 0;
+    int iUnwatchedEpisode = INT_MAX;
+
+    // Now run through the list of items and check episodes from the season identified above
+    // to find the first (lowest episode number) unwatched epsisode.
+    for (int i = 0; i < m_vecItems->Size(); ++i)
+    {
+      CFileItemPtr pItem = m_vecItems->Get(i);
+      if (pItem->IsParentFolder() || !pItem->HasVideoInfoTag())
+        continue;
+
+      CVideoInfoTag *pTag = pItem->GetVideoInfoTag();
+
+      // Does the episode belong to the unwatched season and Is the episode unwatched, and is its epsiode number 
+      // lower than the currently identified first unwatched episode
+      if (pTag->m_iSeason == iUnwatchedSeason && pTag->m_playCount == 0 && pTag->m_iEpisode < iUnwatchedEpisode)
+      {
+        iUnwatchedEpisode = pTag->m_iEpisode;
+        iIndex = i;
+      }
+    }
+  }
+
+  return iIndex;
+}
+
+bool CGUIWindowVideoNav::Update(const std::string &strDirectory, bool updateFilterPath /* = true */)
+{
+  if (!CGUIWindowVideoBase::Update(strDirectory, updateFilterPath))
+    return false;
+
+  // Check if we should select the first unwatched item
+  SelectFirstUnwatchedItem selectFirstUnwatched = GetSettingSelectFirstUnwatchedItem();
+  if (selectFirstUnwatched != SelectFirstUnwatchedItem::NEVER)
+  {
+    bool bIsItemSelected = (m_viewControl.GetSelectedItem() > 0);
+
+    if (selectFirstUnwatched == SelectFirstUnwatchedItem::ALWAYS ||
+      (selectFirstUnwatched == SelectFirstUnwatchedItem::ON_FIRST_ENTRY && !bIsItemSelected))
+    {
+      IncludeAllSeasonsAndSpecials incAllSeasonsSpecials = GetSettingIncludeAllSeasonsAndSpecials();
+
+      bool bIncludeAllSeasons = (incAllSeasonsSpecials == IncludeAllSeasonsAndSpecials::BOTH || incAllSeasonsSpecials == IncludeAllSeasonsAndSpecials::ALL_SEASONS);
+      bool bIncludeSpecials = (incAllSeasonsSpecials == IncludeAllSeasonsAndSpecials::BOTH || incAllSeasonsSpecials == IncludeAllSeasonsAndSpecials::SPECIALS);
+
+      int iIndex = GetFirstUnwatchedItemIndex(bIncludeAllSeasons, bIncludeSpecials);
+      m_viewControl.SetSelectedItem(iIndex);
+    }
+  }
+
+  return true;
 }
 
 bool CGUIWindowVideoNav::GetDirectory(const std::string &strDirectory, CFileItemList &items)
@@ -689,16 +797,19 @@ void CGUIWindowVideoNav::PlayItem(int iItem)
 
 void CGUIWindowVideoNav::OnInfo(CFileItem* pItem, ADDON::ScraperPtr& scraper)
 {
-  m_database.Open(); // since we can be called from the music library without being inited
-  if (pItem->IsVideoDb())
-    scraper = m_database.GetScraperForPath(pItem->GetVideoInfoTag()->m_strPath);
-  else
+  if (!scraper || scraper->Content() == CONTENT_NONE)
   {
-    std::string strPath,strFile;
-    URIUtils::Split(pItem->GetPath(),strPath,strFile);
-    scraper = m_database.GetScraperForPath(strPath);
+    m_database.Open(); // since we can be called from the music library without being inited
+    if (pItem->IsVideoDb())
+      scraper = m_database.GetScraperForPath(pItem->GetVideoInfoTag()->m_strPath);
+    else
+    {
+      std::string strPath,strFile;
+      URIUtils::Split(pItem->GetPath(),strPath,strFile);
+      scraper = m_database.GetScraperForPath(strPath);
+    }
+    m_database.Close();
   }
-  m_database.Close();
   CGUIWindowVideoBase::OnInfo(pItem,scraper);
 }
 
@@ -814,7 +925,7 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
         }
       }
 
-      if (info && !g_application.IsVideoScanning())
+      if (info)
         buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
     }
   }
@@ -902,8 +1013,8 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
         {
           if (g_application.IsVideoScanning())
             buttons.Add(CONTEXT_BUTTON_STOP_SCANNING, 13353);
-          else
-            buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
+
+          buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
         }
 
         if (node == NODE_TYPE_SEASONS && item->m_bIsFolder)
@@ -934,18 +1045,19 @@ void CGUIWindowVideoNav::GetContextButtons(int itemNumber, CContextButtons &butt
           if (!g_application.IsVideoScanning())
           {
             if (info && info->Content() != CONTENT_NONE)
-            {
               buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20442);
-              buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
-            }
             else
               buttons.Add(CONTEXT_BUTTON_SET_CONTENT, 20333);
           }
+
+          if (info && info->Content() != CONTENT_NONE)
+            buttons.Add(CONTEXT_BUTTON_SCAN, 13349);
         }
       }
       if (item->IsPlugin() || item->IsScript() || m_vecItems->IsPlugin())
         buttons.Add(CONTEXT_BUTTON_PLUGIN_SETTINGS, 1045);
     }
+    CContextMenuManager::Get().AddVisibleItems(item, buttons);
   }
 }
 
@@ -1047,13 +1159,21 @@ bool CGUIWindowVideoNav::OnClick(int iItem)
   if (!item->m_bIsFolder && item->IsVideoDb() && !item->Exists())
   {
     CLog::Log(LOGDEBUG, "%s called on '%s' but file doesn't exist", __FUNCTION__, item->GetPath().c_str());
-    if (!CGUIDialogVideoInfo::DeleteVideoItemFromDatabase(item, true))
-      return true;
+    if (CProfilesManager::Get().GetCurrentProfile().canWriteDatabases())
+    {
+      if (!CGUIDialogVideoInfo::DeleteVideoItemFromDatabase(item, true))
+        return true;
 
-    // update list
-    Refresh(true);
-    m_viewControl.SetSelectedItem(iItem);
-    return true;
+      // update list
+      Refresh(true);
+      m_viewControl.SetSelectedItem(iItem);
+      return true;
+    }
+    else
+    {
+      CGUIDialogOK::ShowAndGetInput(257, 0, 662, 0);
+      return true;
+    }	  
   }
   else if (StringUtils::StartsWithNoCase(item->GetPath(), "newtag://"))
   {

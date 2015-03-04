@@ -33,7 +33,7 @@
 #include "GUITexture.h"
 #include "windowing/WindowingFactory.h"
 #include "utils/Variant.h"
-#include "Key.h"
+#include "input/Key.h"
 #include "utils/StringUtils.h"
 
 #include "windows/GUIWindowHome.h"
@@ -117,6 +117,7 @@
 #endif
 
 /* PVR related include Files */
+#include "pvr/PVRManager.h"
 #include "pvr/windows/GUIWindowPVRChannels.h"
 #include "pvr/windows/GUIWindowPVRRecordings.h"
 #include "pvr/windows/GUIWindowPVRGuide.h"
@@ -1067,7 +1068,7 @@ void CGUIWindowManager::DeInitialize()
   for (WindowMap::iterator it = m_mapWindows.begin(); it != m_mapWindows.end(); ++it)
   {
     CGUIWindow* pWindow = (*it).second;
-    if (IsWindowActive(it->first))
+    if (IsWindowActive(it->first, false))
     {
       pWindow->DisableAnimations();
       pWindow->Close(true);
@@ -1245,6 +1246,33 @@ int CGUIWindowManager::GetActiveWindow() const
   if (!m_windowHistory.empty())
     return m_windowHistory.top();
   return WINDOW_INVALID;
+}
+
+int CGUIWindowManager::GetActiveWindowID()
+{
+  // Get the currently active window
+  int iWin = GetActiveWindow() & WINDOW_ID_MASK;
+
+  // If there is a dialog active get the dialog id instead
+  if (HasModalDialog())
+    iWin = GetTopMostModalDialogID() & WINDOW_ID_MASK;
+
+  // If the window is FullScreenVideo check for special cases
+  if (iWin == WINDOW_FULLSCREEN_VIDEO)
+  {
+    // check if we're in a DVD menu
+    if (g_application.m_pPlayer->IsInMenu())
+      iWin = WINDOW_VIDEO_MENU;
+    // check for LiveTV and switch to it's virtual window
+    else if (g_PVRManager.IsStarted() && g_application.CurrentFileItem().HasPVRChannelInfoTag())
+      iWin = WINDOW_FULLSCREEN_LIVETV;
+  }
+  // special casing for PVR radio
+  if (iWin == WINDOW_VISUALISATION && g_PVRManager.IsStarted() && g_application.CurrentFileItem().HasPVRChannelInfoTag())
+    iWin = WINDOW_FULLSCREEN_RADIO;
+
+  // Return the window id
+  return iWin;
 }
 
 // same as GetActiveWindow() except it first grabs dialogs

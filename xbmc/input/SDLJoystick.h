@@ -22,10 +22,10 @@
 #define SDL_JOYSTICK_H
 
 #include "system.h" // for HAS_SDL_JOYSTICK
-#include "settings/lib/ISettingCallback.h"
 #include <vector>
 #include <string>
 #include <map>
+#include <memory>
 
 #define JACTIVE_BUTTON 0x00000001
 #define JACTIVE_AXIS   0x00000002
@@ -62,17 +62,14 @@ struct AxisState {
 };
 
 class CRegExp;
-namespace boost { template <typename T> class shared_ptr; }
 
 // Class to manage all connected joysticks
 // Note: 'index' always refers to indices specific to this class,
 //       whereas 'ids' always refer to SDL instance id's
-class CJoystick : public ISettingCallback
+class CJoystick
 {
 public:
   CJoystick();
-
-  virtual void OnSettingChanged(const CSetting *setting);
 
   void Initialize();
   void Reset();
@@ -87,7 +84,6 @@ public:
   float SetDeadzone(float val);
   bool Reinitialize();
   typedef std::vector<AxisConfig> AxesConfig; // [<axis, isTrigger, rest state value>]
-  void LoadAxesConfigs(const std::map<boost::shared_ptr<CRegExp>, AxesConfig>& axesConfigs);
   void ApplyAxesConfigs();
 
 private:
@@ -120,7 +116,6 @@ private:
   uint32_t m_pressTicksButton;
   uint32_t m_pressTicksHat;
   std::map<int, SDL_Joystick*> m_Joysticks;
-  std::map<boost::shared_ptr<CRegExp>, AxesConfig> m_AxesConfigs; // <joy, <axis num, isTrigger, restState> >
 };
 
 #endif

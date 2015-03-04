@@ -22,7 +22,7 @@
 
 #include "Application.h"
 #include "ApplicationMessenger.h"
-#include "guilib/Key.h"
+#include "input/Key.h"
 #include "guilib/GUIWindow.h"
 #include "guilib/LocalizeStrings.h"
 #include "guilib/GUIWindowManager.h"
@@ -92,8 +92,8 @@ bool CPVRActionListener::OnAction(const CAction &action)
         if(g_PVRManager.IsPlaying())
         {
           // pvr client addon
-          CPVRChannelPtr playingChannel;
-          if(!g_PVRManager.GetCurrentChannel(playingChannel))
+          CPVRChannelPtr playingChannel(g_PVRManager.GetCurrentChannel());
+          if(!playingChannel)
             return false;
           
           if (action.GetID() == REMOTE_0)

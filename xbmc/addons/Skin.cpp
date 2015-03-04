@@ -41,7 +41,7 @@
 using namespace std;
 using namespace XFILE;
 
-boost::shared_ptr<ADDON::CSkinInfo> g_SkinInfo;
+std::shared_ptr<ADDON::CSkinInfo> g_SkinInfo;
 
 namespace ADDON
 {
@@ -287,9 +287,9 @@ bool CSkinInfo::OnPreInstall()
   return false;
 }
 
-void CSkinInfo::OnPostInstall(bool restart, bool update)
+void CSkinInfo::OnPostInstall(bool restart, bool update, bool modal)
 {
-  if (restart || (!update && CGUIDialogYesNo::ShowAndGetInput(Name(), g_localizeStrings.Get(24099),"","")))
+  if (restart || (!update && !modal && CGUIDialogYesNo::ShowAndGetInput(Name(), g_localizeStrings.Get(24099),"","")))
   {
     CGUIDialogKaiToast *toast = (CGUIDialogKaiToast *)g_windowManager.GetWindow(WINDOW_DIALOG_KAI_TOAST);
     if (toast)

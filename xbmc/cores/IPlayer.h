@@ -21,10 +21,13 @@
  */
 
 #include "system.h" // until we get sane int types used here
+#include <memory>
 #include "IAudioCallback.h"
 #include "IPlayerCallback.h"
 #include "guilib/Geometry.h"
 #include <string>
+
+#define CURRENT_STREAM -1
 
 struct TextCacheStruct_t;
 class TiXmlElement;
@@ -34,6 +37,7 @@ class CAction;
 namespace PVR
 {
   class CPVRChannel;
+  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
 }
 
 class CPlayerOptions
@@ -149,9 +153,9 @@ public:
   virtual void SetVolume(float volume){}
   virtual bool ControlsVolume(){ return false;}
   virtual void SetDynamicRangeCompression(long drc){}
-  virtual void GetAudioInfo( std::string& strAudioInfo) = 0;
-  virtual void GetVideoInfo( std::string& strVideoInfo) = 0;
-  virtual void GetGeneralInfo( std::string& strVideoInfo) = 0;
+  virtual void GetAudioInfo(std::string& strAudioInfo) = 0;
+  virtual void GetVideoInfo(std::string& strVideoInfo) = 0;
+  virtual void GetGeneralInfo(std::string& strGeneralInfo) = 0;
   virtual bool CanRecord() { return false;};
   virtual bool IsRecording() { return false;};
   virtual bool Record(bool bOnOff) { return false;};
@@ -179,7 +183,8 @@ public:
 
   virtual int  GetChapterCount()                               { return 0; }
   virtual int  GetChapter()                                    { return -1; }
-  virtual void GetChapterName(std::string& strChapterName)     { return; }
+  virtual void GetChapterName(std::string& strChapterName, int chapterIdx = -1) { return; }
+  virtual int64_t GetChapterPos(int chapterIdx=-1)             { return 0; }
   virtual int  SeekChapter(int iChapter)                       { return -1; }
 //  virtual bool GetChapterInfo(int chapter, SChapterInfo &info) { return false; }
 
@@ -217,7 +222,7 @@ public:
   
   virtual std::string GetPlayingTitle() { return ""; };
 
-  virtual bool SwitchChannel(PVR::CPVRChannel &channel) { return false; }
+  virtual bool SwitchChannel(const PVR::CPVRChannelPtr &channel) { return false; }
 
   // Note: the following "OMX" methods are deprecated and will be removed in the future
   // They should be handled by the video renderer, not the player

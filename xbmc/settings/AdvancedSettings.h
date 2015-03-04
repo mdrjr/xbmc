@@ -50,6 +50,7 @@ public:
     ca.clear();
     capath.clear();
     ciphers.clear();
+    compression = false;
   };
   std::string type;
   std::string host;
@@ -62,6 +63,7 @@ public:
   std::string ca;
   std::string capath;
   std::string ciphers;
+  bool compression;
 };
 
 struct TVShowRegexp
@@ -149,9 +151,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
 
     float m_videoSubsDelayRange;
     float m_videoAudioDelayRange;
-    int m_videoSmallStepBackSeconds;
-    int m_videoSmallStepBackTries;
-    int m_videoSmallStepBackDelay;
     bool m_videoUseTimeSeeking;
     int m_videoTimeSeekForward;
     int m_videoTimeSeekBackward;
@@ -161,6 +160,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     int m_videoPercentSeekBackward;
     int m_videoPercentSeekForwardBig;
     int m_videoPercentSeekBackwardBig;
+    std::vector<int> m_seekSteps;
     std::string m_videoPPFFmpegDeint;
     std::string m_videoPPFFmpegPostProc;
     bool m_videoVDPAUtelecine;
@@ -263,7 +263,6 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     std::string m_musicThumbs;
     std::string m_fanartImages;
 
-    bool m_bMusicLibraryHideAllItems;
     int m_iMusicLibraryRecentlyAddedItems;
     bool m_bMusicLibraryAllItemsOnBottom;
     bool m_bMusicLibraryAlbumsSortByArtistThenYear;
@@ -275,11 +274,11 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     std::string m_videoItemSeparator;
     std::vector<std::string> m_musicTagsFromFileFilters;
 
-    bool m_bVideoLibraryHideAllItems;
     bool m_bVideoLibraryAllItemsOnBottom;
     int m_iVideoLibraryRecentlyAddedItems;
     bool m_bVideoLibraryHideEmptySeries;
     bool m_bVideoLibraryCleanOnUpdate;
+    bool m_bVideoLibraryUseFastHash;
     bool m_bVideoLibraryExportAutoThumbs;
     bool m_bVideoLibraryImportWatchedState;
     bool m_bVideoLibraryImportResumePoint;
@@ -392,11 +391,13 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     float GetDisplayLatency(float refreshrate);
     bool m_initialized;
 
+    //! \brief Returns a list of music extension for filtering in the GUI
+    std::string GetMusicExtensions() const;
+
     void SetDebugMode(bool debug);
 
     // runtime settings which cannot be set from advancedsettings.xml
     std::string m_pictureExtensions;
-    std::string m_musicExtensions;
     std::string m_videoExtensions;
     std::string m_discStubExtensions;
     std::string m_subtitlesExtensions;
@@ -410,6 +411,7 @@ class CAdvancedSettings : public ISettingCallback, public ISettingsHandler
     std::string m_userAgent;
 
   private:
+    std::string m_musicExtensions;
     void setExtraLogLevel(const std::vector<CVariant> &components);
 };
 

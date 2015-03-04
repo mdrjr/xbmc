@@ -37,7 +37,7 @@
 #include "settings/Settings.h"
 #include "FileItem.h"
 #include "guilib/GUIDialog.h"
-#include "guilib/Key.h"
+#include "input/Key.h"
 #include "guilib/GUIKeyboardFactory.h"
 #include "guilib/Resolution.h"
 #include "GUIInfoManager.h"
@@ -144,7 +144,7 @@ void CApplicationMessenger::Cleanup()
 void CApplicationMessenger::SendMessage(ThreadMessage& message, bool wait)
 {
   message.waitEvent.reset();
-  boost::shared_ptr<CEvent> waitEvent;
+  std::shared_ptr<CEvent> waitEvent;
   if (wait)
   { // check that we're not being called from our application thread, else we'll be waiting
     // forever!
@@ -212,7 +212,7 @@ void CApplicationMessenger::ProcessMessages()
     //Leave here as the message might make another
     //thread call processmessages or sendmessage
 
-    boost::shared_ptr<CEvent> waitEvent = pMsg->waitEvent; 
+    std::shared_ptr<CEvent> waitEvent = pMsg->waitEvent;
     lock.Leave(); // <- see the large comment in SendMessage ^
 
     ProcessMessage(pMsg);
@@ -575,7 +575,7 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
       break;
 
     case TMSG_EXECUTE_SCRIPT:
-      CScriptInvocationManager::Get().Execute(pMsg->strParam);
+      CScriptInvocationManager::Get().ExecuteAsync(pMsg->strParam);
       break;
 
     case TMSG_EXECUTE_BUILT_IN:
@@ -864,6 +864,13 @@ void CApplicationMessenger::ProcessMessage(ThreadMessage *pMsg)
 #endif
       break;
     }
+    case TMSG_SETPVRMANAGERSTATE:
+    {
+      if (pMsg->param1 != 0)
+        g_application.StartPVRManager();
+      else
+        g_application.StopPVRManager();
+    }
   }
 }
 
@@ -879,7 +886,7 @@ void CApplicationMessenger::ProcessWindowMessages()
 
     // leave here in case we make more thread messages from this one
 
-    boost::shared_ptr<CEvent> waitEvent = pMsg->waitEvent;
+    std::shared_ptr<CEvent> waitEvent = pMsg->waitEvent;
     lock.Leave(); // <- see the large comment in SendMessage ^
 
     ProcessMessage(pMsg);
@@ -1410,5 +1417,12 @@ void CApplicationMessenger::CECActivateSource()
 void CApplicationMessenger::CECStandby()
 {
   ThreadMessage tMsg = {TMSG_CECSTANDBY};
+  SendMessage(tMsg, false);
+}
+
+void CApplicationMessenger::SetPVRManagerState(bool onOff)
+{
+  ThreadMessage tMsg = {TMSG_SETPVRMANAGERSTATE};
+  tMsg.param1 = onOff ? 1 : 0;
   SendMessage(tMsg, false);
 }

@@ -36,6 +36,8 @@
 #include "AddonString.h"
 #include "Tuple.h"
 #include "commons/Exception.h"
+#include "InfoTagVideo.h"
+#include "InfoTagMusic.h"
 
 
 namespace XBMCAddon
@@ -211,7 +213,7 @@ namespace XBMCAddon
        *     - title         : string (Big Fan)
        *     - originaltitle : string (Big Fan)
        *     - sorttitle     : string (Big Fan)
-       *     - duration      : string (3:18)
+       *     - duration      : integer (245) - duration in seconds
        *     - studio        : string (Warner Bros.)
        *     - tagline       : string (An awesome movie) - short description of movie
        *     - writer        : string (Robert D. Siegel)
@@ -369,6 +371,16 @@ namespace XBMCAddon
        * getfilename() -- Returns the filename of this PlayListItem.\n
        */
       String getfilename();
+
+      /**
+       * getVideoInfoTag() -- returns the VideoInfoTag for this item.
+       */
+      xbmc::InfoTagVideo* getVideoInfoTag();
+
+      /**
+       * getMusicInfoTag() -- returns the MusicInfoTag for this item.
+       */
+      xbmc::InfoTagMusic* getMusicInfoTag();
     };
 
     typedef std::vector<ListItem*> ListItemList;

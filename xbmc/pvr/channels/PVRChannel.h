@@ -27,7 +27,7 @@
 #include "threads/CriticalSection.h"
 #include "utils/ISerializable.h"
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 #define PVR_INVALID_CHANNEL_UID -1
 
@@ -35,7 +35,7 @@ namespace EPG
 {
   class CEpg;
   class CEpgInfoTag;
-  typedef boost::shared_ptr<CEpgInfoTag> CEpgInfoTagPtr;
+  typedef std::shared_ptr<CEpgInfoTag> CEpgInfoTagPtr;
 
 }
 
@@ -45,7 +45,7 @@ namespace PVR
   class CPVRChannelGroupInternal;
 
   class CPVRChannel;
-  typedef boost::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
+  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
 
   typedef struct
   {
@@ -63,11 +63,14 @@ namespace PVR
     /*! @brief Create a new channel */
     CPVRChannel(bool bRadio = false);
     CPVRChannel(const PVR_CHANNEL &channel, unsigned int iClientId);
-    CPVRChannel(const CPVRChannel &channel);
 
+  private:
+    CPVRChannel(const CPVRChannel &tag); // intentionally not implemented.
+    CPVRChannel &operator=(const CPVRChannel &channel); // intentionally not implemented.
+
+  public:
     bool operator ==(const CPVRChannel &right) const;
     bool operator !=(const CPVRChannel &right) const;
-    CPVRChannel &operator=(const CPVRChannel &channel);
 
     virtual void Serialize(CVariant& value) const;
 
@@ -86,7 +89,7 @@ namespace PVR
      * @param channel The new channel data.
      * @return True if something changed, false otherwise.
      */
-    bool UpdateFromClient(const CPVRChannel &channel);
+    bool UpdateFromClient(const CPVRChannelPtr &channel);
 
     /*!
      * @brief Persists the changes in the database.

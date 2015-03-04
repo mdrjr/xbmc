@@ -35,7 +35,7 @@
 #include "profiles/dialogs/GUIDialogLockSettings.h"
 #include "storage/MediaManager.h"
 #include "guilib/GUIWindowManager.h"
-#include "guilib/Key.h"
+#include "input/Key.h"
 #include "GUIDialogYesNo.h"
 #include "addons/AddonManager.h"
 #include "FileItem.h"
@@ -679,9 +679,6 @@ int CGUIDialogContextMenu::ShowAndGetChoice(const CContextButtons &choices)
   CGUIDialogContextMenu *pMenu = (CGUIDialogContextMenu *)g_windowManager.GetWindow(WINDOW_DIALOG_CONTEXT_MENU);
   if (pMenu)
   {
-    if (pMenu->IsDialogRunning())
-      return -1;
-
     pMenu->m_buttons = choices;
     pMenu->Initialize();
     pMenu->SetInitialVisibility();

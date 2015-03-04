@@ -25,6 +25,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <locale>
 
 #ifdef TARGET_WINDOWS
 #ifdef GetDateFormat
@@ -75,7 +76,11 @@ public:
   const std::string& GetTimeZone() const;
 
   const std::string& GetRegionLocale() const;
-  const std::string GetLanguageLocale(bool twochar = false) const;
+
+  /*!
+   \brief Returns the two character ISO 639-1 language code of the current language.
+   */
+  const std::string& GetLanguageLocale() const;
 
   bool ForceUnicodeFont() const { return m_currentRegion->m_forceUnicodeFont; }
 
@@ -130,6 +135,9 @@ public:
   void SetCurrentRegion(const std::string& strName);
   const std::string& GetCurrentRegion() const;
 
+  const std::locale& GetLocale() const
+  { return m_locale; }
+
   static bool CheckLanguage(const std::string& language);
 
   static void LoadTokens(const TiXmlNode* pTokens, std::vector<std::string>& vecTokens);
@@ -179,6 +187,7 @@ protected:
   MAPREGIONS m_regions;
   CRegion* m_currentRegion; // points to the current region
   CRegion m_defaultRegion; // default, will be used if no region available via langinfo.xml
+  std::locale m_locale;     // current locale, matching GUI settings
 
   std::string m_audioLanguage;
   std::string m_subtitleLanguage;

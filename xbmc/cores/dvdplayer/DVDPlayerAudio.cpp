@@ -196,7 +196,7 @@ void CDVDPlayerAudio::OpenStream( CDVDStreamInfo &hints, CDVDAudioCodec* codec )
   m_syncclock = true;
   m_silence = false;
 
-  m_maxspeedadjust = CSettings::Get().GetNumber("videoplayer.maxspeedadjust");
+  m_maxspeedadjust = 5.0;
 
   g_dataCacheCore.SignalAudioInfoChange();
 }
@@ -330,6 +330,13 @@ int CDVDPlayerAudio::DecodeFrame(DVDAudioFrame &audioframe)
     || (m_speed   >  DVD_PLAYSPEED_NORMAL && m_audioClock < m_pClock->GetClock())) /* when behind clock in ff */
       priority = 0;
 
+    // consider stream stalled if queue is empty
+    // we can't sync audio to clock with an empty queue
+    if (m_speed == DVD_PLAYSPEED_NORMAL)
+    {
+      timeout = 0;
+    }
+
     MsgQueueReturnCode ret = m_messageQueue.Get(&pMsg, timeout, priority);
 
     if (ret == MSGQ_TIMEOUT)
@@ -364,6 +371,7 @@ int CDVDPlayerAudio::DecodeFrame(DVDAudioFrame &audioframe)
       m_dvdAudio.SetPlayingPts(m_audioClock);
       if (pMsgGeneralResync->m_clock)
         m_pClock->Discontinuity(m_dvdAudio.GetPlayingPts());
+      m_syncclock = true;
     }
     else if (pMsg->IsType(CDVDMsg::GENERAL_RESET))
     {
@@ -580,8 +588,9 @@ void CDVDPlayerAudio::Process()
       // add any packets play
       packetadded = OutputPacket(audioframe);
 
-      // we are not running until something is cached in output device
-      if(m_stalled && m_dvdAudio.GetCacheTime() > 0.0)
+      // we are not running until something is cached in output device and
+      // we still have a minimum level in the message queue
+      if(m_stalled && m_dvdAudio.GetCacheTime() > 0.0 && m_messageQueue.GetLevel() > 5)
         m_stalled = false;
     }
 
@@ -644,12 +653,15 @@ void CDVDPlayerAudio::HandleSyncError(double duration)
   if (fabs(error) > DVD_MSEC_TO_TIME(100))
   {
     m_syncclock = true;
+    m_errors.Flush();
+    m_integral = 0.0;
     return;
   }
   else if (m_syncclock && fabs(error) < DVD_MSEC_TO_TIME(50))
   {
     m_syncclock = false;
     m_errors.Flush();
+    m_integral = 0.0;
   }
 
   //check if measured error for 2 seconds

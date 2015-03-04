@@ -42,7 +42,7 @@ namespace PVR
   class CPVRClient;
 
   typedef std::vector<PVR_MENUHOOK> PVR_MENUHOOKS;
-  typedef boost::shared_ptr<CPVRClient> PVR_CLIENT;
+  typedef std::shared_ptr<CPVRClient> PVR_CLIENT;
   #define PVR_INVALID_CLIENT_ID (-2)
 
   /*!
@@ -61,7 +61,7 @@ namespace PVR
     virtual void OnEnabled();
     virtual ADDON::AddonPtr GetRunningInstance() const;
     virtual bool OnPreInstall();
-    virtual void OnPostInstall(bool restart, bool update);
+    virtual void OnPostInstall(bool restart, bool update, bool modal);
     virtual void OnPreUnInstall();
     virtual void OnPostUnInstall();
     virtual bool CanInstall(const std::string &referer);
@@ -157,6 +157,34 @@ namespace PVR
     PVR_ERROR StartChannelScan(void);
 
     /*!
+     * @brief Request the client to open dialog about given channel to add
+     * @param channel The channel to add
+     * @return PVR_ERROR_NO_ERROR if the add has been fetched successfully.
+     */
+    PVR_ERROR OpenDialogChannelAdd(const CPVRChannelPtr &channel);
+
+    /*!
+     * @brief Request the client to open dialog about given channel settings
+     * @param channel The channel to edit
+     * @return PVR_ERROR_NO_ERROR if the edit has been fetched successfully.
+     */
+    PVR_ERROR OpenDialogChannelSettings(const CPVRChannelPtr &channel);
+
+    /*!
+     * @brief Request the client to delete given channel
+     * @param channel The channel to delete
+     * @return PVR_ERROR_NO_ERROR if the delete has been fetched successfully.
+     */
+    PVR_ERROR DeleteChannel(const CPVRChannelPtr &channel);
+
+    /*!
+     * @brief Request the client to rename given channel
+     * @param channel The channel to rename
+     * @return PVR_ERROR_NO_ERROR if the rename has been fetched successfully.
+     */
+    PVR_ERROR RenameChannel(const CPVRChannelPtr &channel);
+
+    /*!
      * @return True if this add-on has menu hooks, false otherwise.
      */
     bool HaveMenuHooks(PVR_MENUHOOK_CAT cat) const;
@@ -186,7 +214,7 @@ namespace PVR
      * @param bSaveInDb If true, tell the callback method to save any new entry in the database or not. see CAddonCallbacksPVR::PVRTransferEpgEntry()
      * @return PVR_ERROR_NO_ERROR if the table has been fetched successfully.
      */
-    PVR_ERROR GetEPGForChannel(const CPVRChannel &channel, EPG::CEpg *epg, time_t start = 0, time_t end = 0, bool bSaveInDb = false);
+    PVR_ERROR GetEPGForChannel(const CPVRChannelPtr &channel, EPG::CEpg *epg, time_t start = 0, time_t end = 0, bool bSaveInDb = false);
 
     //@}
     /** @name PVR channel group methods */
@@ -233,16 +261,18 @@ namespace PVR
     //@{
 
     /*!
-     * @return The total amount of channels on the server or -1 on error.
+     * @param deleted if set return deleted recording
+     * @return The total amount of recordingd on the server or -1 on error.
      */
-    int GetRecordingsAmount(void);
+    int GetRecordingsAmount(bool deleted);
 
     /*!
      * @brief Request the list of all recordings from the backend.
      * @param results The container to add the recordings to.
+     * @param deleted if set return deleted recording
      * @return PVR_ERROR_NO_ERROR if the list has been fetched successfully.
      */
-    PVR_ERROR GetRecordings(CPVRRecordings *results);
+    PVR_ERROR GetRecordings(CPVRRecordings *results, bool deleted);
 
     /*!
      * @brief Delete a recording on the backend.
@@ -250,6 +280,19 @@ namespace PVR
      * @return PVR_ERROR_NO_ERROR if the recording has been deleted successfully.
      */
     PVR_ERROR DeleteRecording(const CPVRRecording &recording);
+
+    /*!
+     * @brief Undelete a recording on the backend.
+     * @param recording The recording to undelete.
+     * @return PVR_ERROR_NO_ERROR if the recording has been undeleted successfully.
+     */
+    PVR_ERROR UndeleteRecording(const CPVRRecording &recording);
+
+    /*!
+     * @brief Delete all recordings permanent which in the deleted folder on the backend.
+     * @return PVR_ERROR_NO_ERROR if the recordings has been deleted successfully.
+     */
+    PVR_ERROR DeleteAllRecordingsFromTrash();
 
     /*!
      * @brief Rename a recording on the backend.
@@ -344,7 +387,7 @@ namespace PVR
      * @param bIsSwitchingChannel True when switching channels, false otherwise.
      * @return True if the stream opened successfully, false otherwise.
      */
-    bool OpenStream(const CPVRChannel &channel, bool bIsSwitchingChannel);
+    bool OpenStream(const CPVRChannelPtr &channel, bool bIsSwitchingChannel);
 
     /*!
      * @brief Close an open live stream.
@@ -392,7 +435,7 @@ namespace PVR
      * @param channel The channel to switch to.
      * @return True if the switch was successful, false otherwise.
      */
-    bool SwitchChannel(const CPVRChannel &channel);
+    bool SwitchChannel(const CPVRChannelPtr &channel);
 
     /*!
      * @brief Get the signal quality of the stream that's currently open.
@@ -406,7 +449,7 @@ namespace PVR
      * @param channel The channel to get the stream URL for.
      * @return The requested URL.
      */
-    std::string GetLiveStreamURL(const CPVRChannel &channel);
+    std::string GetLiveStreamURL(const CPVRChannelPtr &channel);
 
     /*!
      * @brief Check whether PVR backend supports pausing the currently playing stream
@@ -444,7 +487,7 @@ namespace PVR
      * @param recording The recording to open.
      * @return True if the stream has been opened succesfully, false otherwise.
      */
-    bool OpenStream(const CPVRRecording &recording);
+    bool OpenStream(const CPVRRecordingPtr &recording);
 
     //@}
     /** @name PVR demultiplexer methods */
@@ -475,10 +518,12 @@ namespace PVR
 
     bool SupportsChannelGroups(void) const;
     bool SupportsChannelScan(void) const;
+    bool SupportsChannelSettings(void) const;
     bool SupportsEPG(void) const;
     bool SupportsLastPlayedPosition(void) const;
     bool SupportsRadio(void) const;
     bool SupportsRecordings(void) const;
+    bool SupportsRecordingsUndelete(void) const;
     bool SupportsRecordingFolders(void) const;
     bool SupportsRecordingPlayCount(void) const;
     bool SupportsRecordingEdl(void) const;
@@ -493,8 +538,8 @@ namespace PVR
     bool IsPlayingEncryptedChannel(void) const;
     bool IsPlayingRecording(void) const;
     bool IsPlaying(void) const;
-    bool GetPlayingChannel(CPVRChannelPtr &channel) const;
-    bool GetPlayingRecording(CPVRRecording &recording) const;
+    CPVRRecordingPtr GetPlayingRecording(void) const;
+    CPVRChannelPtr GetPlayingChannel() const;
 
     static const char *ToString(const PVR_ERROR error);
 
@@ -569,14 +614,14 @@ namespace PVR
      * @param xbmcChannel The channel on XBMC's side.
      * @param addonChannel The channel on the addon's side.
      */
-    static void WriteClientChannelInfo(const CPVRChannel &xbmcChannel, PVR_CHANNEL &addonChannel);
+    static void WriteClientChannelInfo(const CPVRChannelPtr &xbmcChannel, PVR_CHANNEL &addonChannel);
 
     /*!
      * @brief Whether a channel can be played by this add-on
      * @param channel The channel to check.
      * @return True when it can be played, false otherwise.
      */
-    bool CanPlayChannel(const CPVRChannel &channel) const;
+    bool CanPlayChannel(const CPVRChannelPtr &channel) const;
 
     bool LogError(const PVR_ERROR error, const char *strMethod) const;
     void LogException(const std::exception &e, const char *strFunctionName) const;
@@ -605,10 +650,10 @@ namespace PVR
 
     CCriticalSection m_critSection;
 
-    bool           m_bIsPlayingTV;
-    CPVRChannelPtr m_playingChannel;
-    bool           m_bIsPlayingRecording;
-    CPVRRecording  m_playingRecording;
+    bool                m_bIsPlayingTV;
+    CPVRChannelPtr      m_playingChannel;
+    bool                m_bIsPlayingRecording;
+    CPVRRecordingPtr    m_playingRecording;
     ADDON::AddonVersion m_apiVersion;
   };
 }

@@ -54,7 +54,48 @@ bool CRenderCaptureBase::UseOcclusionQuery()
     return true;
 }
 
-#if defined(TARGET_RASPBERRY_PI)
+
+#if defined(HAS_IMXVPU)
+CRenderCaptureIMX::CRenderCaptureIMX()
+{
+}
+
+CRenderCaptureIMX::~CRenderCaptureIMX()
+{
+}
+
+int CRenderCaptureIMX::GetCaptureFormat()
+{
+    return CAPTUREFORMAT_RGBA;
+}
+
+void CRenderCaptureIMX::BeginRender()
+{
+  m_asyncChecked = true;
+  m_asyncSupported = true;
+}
+
+void CRenderCaptureIMX::EndRender()
+{
+  if (m_flags & CAPTUREFLAG_IMMEDIATELY)
+    ReadOut();
+  else
+    SetState(CAPTURESTATE_NEEDSREADOUT);
+}
+
+void* CRenderCaptureIMX::GetRenderBuffer()
+{
+    return m_pixels;
+}
+
+void CRenderCaptureIMX::ReadOut()
+{
+  g_IMXContext.WaitCapture();
+  m_pixels = reinterpret_cast<uint8_t*>(g_IMXContext.GetCaptureBuffer());
+  SetState(CAPTURESTATE_DONE);
+}
+
+#elif defined(TARGET_RASPBERRY_PI)
 
 CRenderCaptureDispmanX::CRenderCaptureDispmanX()
 {
@@ -130,8 +171,7 @@ void CRenderCaptureGL::BeginRender()
   if (!m_asyncChecked)
   {
 #ifndef HAS_GLES
-    bool usePbo = CSettings::Get().GetBool("videoplayer.usepbo");
-    m_asyncSupported = g_Windowing.IsExtSupported("GL_ARB_pixel_buffer_object") && usePbo;
+    m_asyncSupported = g_Windowing.IsExtSupported("GL_ARB_pixel_buffer_object");
     m_occlusionQuerySupported = g_Windowing.IsExtSupported("GL_ARB_occlusion_query");
 
     if (m_flags & CAPTUREFLAG_CONTINUOUS)
@@ -140,8 +180,6 @@ void CRenderCaptureGL::BeginRender()
         CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_occlusion_query not supported, performance might suffer");
       if (!g_Windowing.IsExtSupported("GL_ARB_pixel_buffer_object"))
         CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_pixel_buffer_object not supported, performance might suffer");
-      if (!usePbo)
-        CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_pixel_buffer_object disabled, performance might suffer");
       if (UseOcclusionQuery())
         CLog::Log(LOGWARNING, "CRenderCaptureGL: GL_ARB_occlusion_query disabled, performance might suffer");
     }

@@ -37,7 +37,7 @@ namespace ADDON
 {
   class CSkinInfo;
   class IAddon;
-  typedef boost::shared_ptr<IAddon> AddonPtr;
+  typedef std::shared_ptr<IAddon> AddonPtr;
 }
 
 namespace MEDIA_DETECT
@@ -75,7 +75,6 @@ class DPMSSupport;
 class CSplash;
 class CBookmark;
 class CNetwork;
-class CInputManager;
 
 namespace VIDEO
 {
@@ -117,7 +116,6 @@ class CApplication : public CXBApplicationEx, public IPlayerCallback, public IMs
                      public ISettingCallback, public ISettingsHandler, public ISubSettings
 {
   friend class CApplicationPlayer;
-  friend class CInputManager;
 public:
 
   enum ESERVERS
@@ -181,7 +179,7 @@ public:
   PlayBackRet PlayFile(const CFileItem& item, bool bRestart = false);
   void SaveFileState(bool bForeground = false);
   void UpdateFileState();
-  void LoadVideoSettings(const std::string &path);
+  void LoadVideoSettings(const CFileItem& item);
   void StopPlaying();
   void Restart(bool bSamePosition = true);
   void DelayedPlayerRestart();
@@ -189,7 +187,6 @@ public:
   bool IsPlayingFullScreenVideo() const;
   bool IsStartingPlayback() const { return m_bPlaybackStarting; }
   bool IsFullScreen();
-  bool OnKey(const CKey& key);
   bool OnAppCommand(const CAction &action);
   bool OnAction(const CAction &action);
   void CheckShutdown();
@@ -368,12 +365,6 @@ public:
 
   float GetDimScreenSaverLevel() const;
 
-  /*! \brief Retrieve the applications seek handler.
-   \return a constant pointer to the seek handler.
-   \sa CSeekHandler
-   */
-  const CSeekHandler *GetSeekHandler() const { return m_seekHandler; };
-
   bool SwitchToFullScreen();
 
   CSplash* GetSplash() { return m_splash; }
@@ -408,7 +399,7 @@ protected:
   virtual bool OnSettingUpdate(CSetting* &setting, const char *oldSettingId, const TiXmlNode *oldSettingNode);
 
   bool LoadSkin(const std::string& skinID);
-  bool LoadSkin(const boost::shared_ptr<ADDON::CSkinInfo>& skin);
+  bool LoadSkin(const std::shared_ptr<ADDON::CSkinInfo>& skin);
   
   /*!
    \brief Delegates the action to all registered action handlers.
@@ -477,7 +468,6 @@ protected:
   bool m_bTestMode;
   bool m_bSystemScreenSaverEnable;
 
-  VIDEO::CVideoInfoScanner *m_videoInfoScanner;
   MUSIC_INFO::CMusicInfoScanner *m_musicInfoScanner;
 
   bool m_muted;
@@ -491,18 +481,15 @@ protected:
   void VolumeChanged() const;
 
   PlayBackRet PlayStack(const CFileItem& item, bool bRestart);
-  bool ExecuteInputAction(const CAction &action);
   int  GetActiveWindowID(void);
 
   float NavigationIdleTime();
-  static bool AlwaysProcess(const CAction& action);
 
   bool InitDirectoriesLinux();
   bool InitDirectoriesOSX();
   bool InitDirectoriesWin32();
   void CreateUserDirs();
 
-  CSeekHandler *m_seekHandler;
   CPlayerController *m_playerController;
   CInertialScrollingHandler *m_pInertialScrollingHandler;
   CNetwork    *m_network;

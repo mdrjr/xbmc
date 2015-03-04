@@ -111,6 +111,7 @@ namespace INFO
 #define PLAYER_TITLE                 53
 #define PLAYER_ISINTERNETSTREAM      54
 #define PLAYER_FILENAME              55
+#define PLAYER_SEEKSTEPSIZE          56
 
 #define WEATHER_CONDITIONS          100
 #define WEATHER_TEMPERATURE         101
@@ -465,29 +466,30 @@ namespace INFO
 #define PVR_BACKEND_CHANNELS        (PVR_STRINGS_START + 12)
 #define PVR_BACKEND_TIMERS          (PVR_STRINGS_START + 13)
 #define PVR_BACKEND_RECORDINGS      (PVR_STRINGS_START + 14)
-#define PVR_BACKEND_NUMBER          (PVR_STRINGS_START + 15)
-#define PVR_TOTAL_DISKSPACE         (PVR_STRINGS_START + 16)
-#define PVR_NEXT_TIMER              (PVR_STRINGS_START + 17)
-#define PVR_PLAYING_DURATION        (PVR_STRINGS_START + 18)
-#define PVR_PLAYING_TIME            (PVR_STRINGS_START + 19)
-#define PVR_PLAYING_PROGRESS        (PVR_STRINGS_START + 20)
-#define PVR_ACTUAL_STREAM_CLIENT    (PVR_STRINGS_START + 21)
-#define PVR_ACTUAL_STREAM_DEVICE    (PVR_STRINGS_START + 22)
-#define PVR_ACTUAL_STREAM_STATUS    (PVR_STRINGS_START + 23)
-#define PVR_ACTUAL_STREAM_SIG       (PVR_STRINGS_START + 24)
-#define PVR_ACTUAL_STREAM_SNR       (PVR_STRINGS_START + 25)
-#define PVR_ACTUAL_STREAM_SIG_PROGR (PVR_STRINGS_START + 26)
-#define PVR_ACTUAL_STREAM_SNR_PROGR (PVR_STRINGS_START + 27)
-#define PVR_ACTUAL_STREAM_BER       (PVR_STRINGS_START + 28)
-#define PVR_ACTUAL_STREAM_UNC       (PVR_STRINGS_START + 29)
-#define PVR_ACTUAL_STREAM_VIDEO_BR  (PVR_STRINGS_START + 30)
-#define PVR_ACTUAL_STREAM_AUDIO_BR  (PVR_STRINGS_START + 31)
-#define PVR_ACTUAL_STREAM_DOLBY_BR  (PVR_STRINGS_START + 32)
-#define PVR_ACTUAL_STREAM_CRYPTION  (PVR_STRINGS_START + 33)
-#define PVR_ACTUAL_STREAM_SERVICE   (PVR_STRINGS_START + 34)
-#define PVR_ACTUAL_STREAM_MUX       (PVR_STRINGS_START + 35)
-#define PVR_ACTUAL_STREAM_PROVIDER  (PVR_STRINGS_START + 36)
-#define PVR_BACKEND_DISKSPACE_PROGR (PVR_STRINGS_START + 37)
+#define PVR_BACKEND_DELETED_RECORDINGS (PVR_STRINGS_START + 15)
+#define PVR_BACKEND_NUMBER          (PVR_STRINGS_START + 16)
+#define PVR_TOTAL_DISKSPACE         (PVR_STRINGS_START + 17)
+#define PVR_NEXT_TIMER              (PVR_STRINGS_START + 18)
+#define PVR_PLAYING_DURATION        (PVR_STRINGS_START + 19)
+#define PVR_PLAYING_TIME            (PVR_STRINGS_START + 20)
+#define PVR_PLAYING_PROGRESS        (PVR_STRINGS_START + 21)
+#define PVR_ACTUAL_STREAM_CLIENT    (PVR_STRINGS_START + 22)
+#define PVR_ACTUAL_STREAM_DEVICE    (PVR_STRINGS_START + 23)
+#define PVR_ACTUAL_STREAM_STATUS    (PVR_STRINGS_START + 24)
+#define PVR_ACTUAL_STREAM_SIG       (PVR_STRINGS_START + 25)
+#define PVR_ACTUAL_STREAM_SNR       (PVR_STRINGS_START + 26)
+#define PVR_ACTUAL_STREAM_SIG_PROGR (PVR_STRINGS_START + 27)
+#define PVR_ACTUAL_STREAM_SNR_PROGR (PVR_STRINGS_START + 28)
+#define PVR_ACTUAL_STREAM_BER       (PVR_STRINGS_START + 29)
+#define PVR_ACTUAL_STREAM_UNC       (PVR_STRINGS_START + 30)
+#define PVR_ACTUAL_STREAM_VIDEO_BR  (PVR_STRINGS_START + 31)
+#define PVR_ACTUAL_STREAM_AUDIO_BR  (PVR_STRINGS_START + 32)
+#define PVR_ACTUAL_STREAM_DOLBY_BR  (PVR_STRINGS_START + 33)
+#define PVR_ACTUAL_STREAM_CRYPTION  (PVR_STRINGS_START + 34)
+#define PVR_ACTUAL_STREAM_SERVICE   (PVR_STRINGS_START + 35)
+#define PVR_ACTUAL_STREAM_MUX       (PVR_STRINGS_START + 36)
+#define PVR_ACTUAL_STREAM_PROVIDER  (PVR_STRINGS_START + 37)
+#define PVR_BACKEND_DISKSPACE_PROGR (PVR_STRINGS_START + 38)
 #define PVR_STRINGS_END             PVR_ACTUAL_STREAM_PROVIDER
 
 #define WINDOW_PROPERTY             9993
@@ -676,7 +678,7 @@ class CGUIWindow;
 namespace EPG
 {
   class CEpgInfoTag;
-  typedef boost::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
+  typedef std::shared_ptr<EPG::CEpgInfoTag> CEpgInfoTagPtr;
 }
 
 // Info Flags
@@ -801,6 +803,7 @@ public:
 
   bool GetDisplayAfterSeek();
   void SetDisplayAfterSeek(unsigned int timeOut = 2500, int seekOffset = 0);
+  void SetSeekStepSize(int seekStepSize) { m_seekStepSize = seekStepSize; };
   void SetSeeking(bool seeking) { m_playerSeeking = seeking; };
   void SetShowTime(bool showtime) { m_playerShowTime = showtime; };
   void SetShowCodec(bool showcodec) { m_playerShowCodec = showcodec; };
@@ -931,6 +934,7 @@ protected:
   //Fullscreen OSD Stuff
   unsigned int m_AfterSeekTimeout;
   int m_seekOffset;
+  int m_seekStepSize;
   bool m_playerSeeking;
   bool m_playerShowTime;
   bool m_playerShowCodec;

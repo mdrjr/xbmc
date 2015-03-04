@@ -288,6 +288,7 @@ bool CXBMCRenderManager::Configure(unsigned int width, unsigned int height, unsi
       m_free.push_back(i);
 
     m_bIsStarted = true;
+    m_bRenderGUI = true;
     m_bReconfigured = true;
     m_presentstep = PRESENT_IDLE;
     m_presentpts = DVD_NOPTS_VALUE;
@@ -370,7 +371,7 @@ void CXBMCRenderManager::FrameMove()
     for(std::deque<int>::iterator it = m_discard.begin(); it != m_discard.end(); )
     {
       // renderer may want to keep the frame for postprocessing
-      if (!m_pRenderer->NeedBufferForRef(*it))
+      if (!m_pRenderer->NeedBufferForRef(*it) || !m_bRenderGUI)
       {
         m_pRenderer->ReleaseBuffer(*it);
         m_overlays.Release(*it);
@@ -380,6 +381,8 @@ void CXBMCRenderManager::FrameMove()
       else
         ++it;
     }
+
+    m_bRenderGUI = true;
   }
 }
 
@@ -676,7 +679,10 @@ void CXBMCRenderManager::FlipPage(volatile bool& bStop, double timestamp /* = 0L
       deinterlacemode = VS_DEINTERLACEMODE_OFF;
 
     if (deinterlacemode == VS_DEINTERLACEMODE_OFF)
+    {
       presentmethod = PRESENT_METHOD_SINGLE;
+      sync = FS_NONE;
+    }
     else
     {
       if (deinterlacemode == VS_DEINTERLACEMODE_AUTO && sync == FS_NONE)
@@ -691,6 +697,7 @@ void CXBMCRenderManager::FlipPage(volatile bool& bStop, double timestamp /* = 0L
         else if (interlacemethod == VS_INTERLACEMETHOD_RENDER_BOB_INVERTED)   { presentmethod = PRESENT_METHOD_BOB; invert = true; }
         else if (interlacemethod == VS_INTERLACEMETHOD_DXVA_BOB)                presentmethod = PRESENT_METHOD_BOB;
         else if (interlacemethod == VS_INTERLACEMETHOD_DXVA_BEST)               presentmethod = PRESENT_METHOD_BOB;
+        else if (interlacemethod == VS_INTERLACEMETHOD_IMX_FASTMOTION_DOUBLE)   presentmethod = PRESENT_METHOD_BOB;
         else                                                                    presentmethod = PRESENT_METHOD_SINGLE;
 
         /* default to odd field if we want to deinterlace and don't know better */
@@ -837,8 +844,14 @@ bool CXBMCRenderManager::IsVideoLayer()
 void CXBMCRenderManager::PresentSingle(bool clear, DWORD flags, DWORD alpha)
 {
   CSingleLock lock(g_graphicsContext);
+  SPresent& m = m_Queue[m_presentsource];
 
-  m_pRenderer->RenderUpdate(clear, flags, alpha);
+  if (m.presentfield == FS_BOT)
+    m_pRenderer->RenderUpdate(clear, flags | RENDER_FLAG_BOT, alpha);
+  else if (m.presentfield == FS_TOP)
+    m_pRenderer->RenderUpdate(clear, flags | RENDER_FLAG_TOP, alpha);
+  else
+    m_pRenderer->RenderUpdate(clear, flags, alpha);
 }
 
 /* new simpler method of handling interlaced material, *
@@ -1078,6 +1091,17 @@ EINTERLACEMETHOD CXBMCRenderManager::AutoInterlaceMethodInternal(EINTERLACEMETHO
 int CXBMCRenderManager::WaitForBuffer(volatile bool& bStop, int timeout)
 {
   CSingleLock lock2(m_presentlock);
+
+  // check if gui is active and discard buffer if not
+  // this keeps videoplayer going
+  if (!m_bRenderGUI || !g_application.GetRenderGUI())
+  {
+    m_bRenderGUI = false;
+    lock2.Leave();
+    Sleep(20);
+    DiscardBuffer();
+    return 0;
+  }
 
   XbmcThreads::EndTime endtime(timeout);
   while(m_free.empty())

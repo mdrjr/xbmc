@@ -59,11 +59,15 @@
 #ifdef HAS_WEB_SERVER
 #include "network/WebServer.h"
 #include "network/httprequesthandler/HTTPImageHandler.h"
+#include "network/httprequesthandler/HTTPImageTransformationHandler.h"
 #include "network/httprequesthandler/HTTPVfsHandler.h"
 #ifdef HAS_JSONRPC
 #include "network/httprequesthandler/HTTPJsonRpcHandler.h"
 #endif // HAS_JSONRPC
 #ifdef HAS_WEB_INTERFACE
+#ifdef HAS_PYTHON
+#include "network/httprequesthandler/HTTPPythonHandler.h"
+#endif
 #include "network/httprequesthandler/HTTPWebinterfaceHandler.h"
 #include "network/httprequesthandler/HTTPWebinterfaceAddonsHandler.h"
 #endif // HAS_WEB_INTERFACE
@@ -95,11 +99,15 @@ CNetworkServices::CNetworkServices()
   :
   m_webserver(*new CWebServer),
   m_httpImageHandler(*new CHTTPImageHandler),
+  m_httpImageTransformationHandler(*new CHTTPImageTransformationHandler),
   m_httpVfsHandler(*new CHTTPVfsHandler)
 #ifdef HAS_JSONRPC
   , m_httpJsonRpcHandler(*new CHTTPJsonRpcHandler)
 #endif // HAS_JSONRPC
 #ifdef HAS_WEB_INTERFACE
+#ifdef HAS_PYTHON
+  , m_httpPythonHandler(*new CHTTPPythonHandler)
+#endif
   , m_httpWebinterfaceHandler(*new CHTTPWebinterfaceHandler)
   , m_httpWebinterfaceAddonsHandler(*new CHTTPWebinterfaceAddonsHandler)
 #endif // HAS_WEB_INTERFACE
@@ -107,11 +115,15 @@ CNetworkServices::CNetworkServices()
 {
 #ifdef HAS_WEB_SERVER
   CWebServer::RegisterRequestHandler(&m_httpImageHandler);
+  CWebServer::RegisterRequestHandler(&m_httpImageTransformationHandler);
   CWebServer::RegisterRequestHandler(&m_httpVfsHandler);
 #ifdef HAS_JSONRPC
   CWebServer::RegisterRequestHandler(&m_httpJsonRpcHandler);
 #endif // HAS_JSONRPC
 #ifdef HAS_WEB_INTERFACE
+#ifdef HAS_PYTHON
+  CWebServer::RegisterRequestHandler(&m_httpPythonHandler);
+#endif
   CWebServer::RegisterRequestHandler(&m_httpWebinterfaceAddonsHandler);
   CWebServer::RegisterRequestHandler(&m_httpWebinterfaceHandler);
 #endif // HAS_WEB_INTERFACE
@@ -123,6 +135,8 @@ CNetworkServices::~CNetworkServices()
 #ifdef HAS_WEB_SERVER
   CWebServer::UnregisterRequestHandler(&m_httpImageHandler);
   delete &m_httpImageHandler;
+  CWebServer::UnregisterRequestHandler(&m_httpImageTransformationHandler);
+  delete &m_httpImageTransformationHandler;
   CWebServer::UnregisterRequestHandler(&m_httpVfsHandler);
   delete &m_httpVfsHandler;
 #ifdef HAS_JSONRPC
@@ -131,6 +145,10 @@ CNetworkServices::~CNetworkServices()
   CJSONRPC::Cleanup();
 #endif // HAS_JSONRPC
 #ifdef HAS_WEB_INTERFACE
+#ifdef HAS_PYTHON
+  CWebServer::UnregisterRequestHandler(&m_httpPythonHandler);
+  delete &m_httpPythonHandler;
+#endif
   CWebServer::UnregisterRequestHandler(&m_httpWebinterfaceAddonsHandler);
   delete &m_httpWebinterfaceAddonsHandler;
   CWebServer::UnregisterRequestHandler(&m_httpWebinterfaceHandler);

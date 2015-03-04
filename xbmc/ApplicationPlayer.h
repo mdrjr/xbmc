@@ -20,7 +20,7 @@
  *
  */
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include "threads/SingleLock.h"
 #include "threads/SystemClock.h"
 #include "cores/playercorefactory/PlayerCoreFactory.h"
@@ -35,6 +35,7 @@ typedef enum
 namespace PVR
 {
   class CPVRChannel;
+  typedef std::shared_ptr<PVR::CPVRChannel> CPVRChannelPtr;
 }
 
 class CAction;
@@ -48,7 +49,7 @@ struct TextCacheStruct_t;
 
 class CApplicationPlayer
 {
-  boost::shared_ptr<IPlayer> m_pPlayer;
+  std::shared_ptr<IPlayer> m_pPlayer;
   unsigned int m_iPlayerOPSeq;  // used to detect whether an OpenFile request on player is canceled by us.
   PLAYERCOREID m_eCurrentPlayer;
 
@@ -71,7 +72,7 @@ public:
   void ClosePlayerGapless(PLAYERCOREID newCore);
   void CreatePlayer(PLAYERCOREID newCore, IPlayerCallback& callback);
   PLAYERCOREID GetCurrentPlayer() const { return m_eCurrentPlayer; }
-  boost::shared_ptr<IPlayer> GetInternal() const;
+  std::shared_ptr<IPlayer> GetInternal() const;
   int  GetPlaySpeed() const;
   bool HasPlayer() const;
   PlayBackRet OpenFile(const CFileItem& item, const CPlayerOptions& options);
@@ -94,7 +95,8 @@ public:
   float GetCachePercentage() const;
   int   GetChapterCount();
   int   GetChapter();  
-  void  GetChapterName(std::string& strChapterName);
+  void  GetChapterName(std::string& strChapterName, int chapterIdx=-1);
+  int64_t GetChapterPos(int chapterIdx=-1);
   void  GetDeinterlaceMethods(std::vector<int> &deinterlaceMethods);
   void  GetDeinterlaceModes(std::vector<int> &deinterlaceModes);
   void  GetGeneralInfo(std::string& strVideoInfo);
@@ -146,6 +148,6 @@ public:
   void  SetSubTitleDelay(float fValue = 0.0f);
   void  SetSubtitleVisible(bool bVisible);
   void  SetVolume(float volume);
-  bool  SwitchChannel(PVR::CPVRChannel &channel);
+  bool  SwitchChannel(const PVR::CPVRChannelPtr &channel);
   void  ToFFRW(int iSpeed = 0);
 };

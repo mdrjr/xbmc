@@ -2,9 +2,12 @@ AC_PREREQ(2.59)
 AC_INIT([xbmc-depends], [2.00], [http://trac.xbmc.org])
 :${CFLAGS=""}
 AC_CONFIG_AUX_DIR([build-aux])
-AC_CONFIG_FILES([target/config.site native/config.site.native Makefile.include target/Toolchain.cmake])
+AC_CONFIG_FILES([target/config.site native/config.site.native Makefile.include target/Toolchain.cmake
+                 target/config-binaddons.site target/Toolchain_binaddons.cmake])
 AC_CANONICAL_HOST
 m4_include([../../m4/xbmc_arch.m4])
+m4_include([../../m4/ax_cxx_compile_stdcxx_11.m4])
+AX_CXX_COMPILE_STDCXX_11(,[optional])
 
 AC_ARG_WITH([toolchain],
   [AS_HELP_STRING([--with-toolchain],
@@ -250,7 +253,7 @@ case $host in
             AC_MSG_ERROR(error in configure of --with-arch=$use_cpu)
         esac
         platform_os="osx"
-        platform_min_version=macosx-version-min=10.6
+        platform_min_version=macosx-version-min=10.7
       ;;
 
       arm-apple-darwin*)
@@ -260,7 +263,7 @@ case $host in
         if test "$use_cpu" != "armv7"; then
           AC_MSG_ERROR(error in configure of --with-arch=$use_cpu)
         fi
-        platform_min_version="iphoneos-version-min=4.2"
+        platform_min_version="iphoneos-version-min=5.1"
         found_sdk_version=[`$use_xcodebuild -showsdks | grep iphoneos | sort | tail -n 1 | awk '{ print $2}'`]
         use_sdk="${use_sdk:-$found_sdk_version}"
         sdk_name=iphoneos$use_sdk
@@ -293,7 +296,7 @@ case $host in
     esac
     platform_cflags+=" -arch $use_cpu -m$platform_min_version"
     platform_ldflags+=" -arch $use_cpu -m$platform_min_version -isysroot $use_sdk_path"
-    platform_cxxflags+=" -arch $use_cpu -m$platform_min_version"
+    platform_cxxflags+=" -arch $use_cpu -m$platform_min_version -std=c++11 -stdlib=libc++"
     platform_includes="-isysroot $use_sdk_path"
     deps_dir=$sdk_name"_"$use_cpu-target
     tool_dir=buildtools-native;
@@ -496,6 +499,7 @@ AC_SUBST(use_toolchain)
 AC_SUBST(use_build_toolchain)
 AC_SUBST(use_tarballs)
 AC_SUBST(use_platform)
+AC_SUBST(use_firmware)
 AC_SUBST(cross_compiling)
 AC_SUBST(platform_cflags)
 AC_SUBST(platform_cxxflags)

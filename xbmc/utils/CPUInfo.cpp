@@ -19,6 +19,8 @@
  */
 
 #include "system.h"
+#include <cstdlib>
+
 #include "CPUInfo.h"
 #include "Temperature.h"
 #include <string>

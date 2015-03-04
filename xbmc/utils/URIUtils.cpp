@@ -32,6 +32,7 @@
 #include "URL.h"
 #include "StringUtils.h"
 
+#include <cassert>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -138,7 +139,7 @@ void URIUtils::RemoveExtension(std::string& strFileName)
 
     std::string strFileMask;
     strFileMask = g_advancedSettings.m_pictureExtensions;
-    strFileMask += "|" + g_advancedSettings.m_musicExtensions;
+    strFileMask += "|" + g_advancedSettings.GetMusicExtensions();
     strFileMask += "|" + g_advancedSettings.m_videoExtensions;
     strFileMask += "|" + g_advancedSettings.m_subtitlesExtensions;
 #if defined(TARGET_DARWIN)
@@ -420,7 +421,7 @@ std::string URLDecodePath(const std::string& strPath)
   return StringUtils::Join(segments, "/");
 }
 
-std::string URIUtils::ChangeBasePath(const std::string &fromPath, const std::string &fromFile, const std::string &toPath)
+std::string URIUtils::ChangeBasePath(const std::string &fromPath, const std::string &fromFile, const std::string &toPath, const bool &bAddPath /* = true */)
 {
   std::string toFile = fromFile;
 
@@ -444,7 +445,10 @@ std::string URIUtils::ChangeBasePath(const std::string &fromPath, const std::str
   if (!IsDOSPath(fromPath) && IsDOSPath(toPath))
     StringUtils::Replace(toFile, "/", "\\");
 
-  return AddFileToFolder(toPath, toFile);
+  if (bAddPath)
+    return AddFileToFolder(toPath, toFile);
+
+  return toFile;
 }
 
 CURL URIUtils::SubstitutePath(const CURL& url, bool reverse /* = false */)

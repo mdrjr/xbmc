@@ -325,6 +325,15 @@
     <Filter Include="network\test">
       <UniqueIdentifier>{1bdb0045-3341-49b7-8d6f-30a53f812350}</UniqueIdentifier>
     </Filter>
+    <Filter Include="video\jobs">
+      <UniqueIdentifier>{f413004c-1ab9-42ce-bb1a-0636e5286a00}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="network\httprequesthandler\python">
+      <UniqueIdentifier>{0a6159ba-a21c-4570-9db0-dc5dfb463de5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="interfaces\legacy\wsgi">
+      <UniqueIdentifier>{4750236a-887e-40c1-af3e-1e095f5960e0}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\xbmc\win32\pch.cpp">
@@ -756,6 +765,9 @@
     <ClCompile Include="..\..\xbmc\addons\AudioEncoder.cpp">
       <Filter>addons</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\addons\ContextItemAddon.cpp">
+      <Filter>addons</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\addons\Scraper.cpp">
       <Filter>addons</Filter>
     </ClCompile>
@@ -1106,9 +1118,6 @@
       <Filter>guilib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\guilib\IWindowManagerCallback.cpp">
-      <Filter>guilib</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\xbmc\guilib\Key.cpp">
       <Filter>guilib</Filter>
     </ClCompile>
     <ClCompile Include="..\..\xbmc\guilib\LocalizeStrings.cpp">
@@ -2342,6 +2351,7 @@
     <ClCompile Include="..\..\xbmc\AutoSwitch.cpp" />
     <ClCompile Include="..\..\xbmc\DynamicDll.cpp" />
     <ClCompile Include="..\..\xbmc\CueDocument.cpp" />
+    <ClCompile Include="..\..\xbmc\ContextMenuManager.cpp" />
     <ClCompile Include="..\..\xbmc\FileItem.cpp" />
     <ClCompile Include="..\..\xbmc\GUIInfoManager.cpp" />
     <ClCompile Include="..\..\xbmc\GUIPassword.cpp" />
@@ -2949,6 +2959,9 @@
     <ClCompile Include="..\..\xbmc\interfaces\python\AddonPythonInvoker.cpp">
       <Filter>interfaces\python</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\python\ContextItemAddonInvoker.cpp">
+      <Filter>interfaces\python</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\utils\StringValidation.cpp">
       <Filter>utils</Filter>
     </ClCompile>
@@ -3062,9 +3075,6 @@
     <ClCompile Include="..\..\xbmc\filesystem\win32\Win32SMBFile.cpp">
       <Filter>filesystem\win32</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\xbmc\utils\MarkWatchedJob.cpp">
-      <Filter>utils</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\xbmc\filesystem\BlurayFile.cpp">
       <Filter>filesystem</Filter>
     </ClCompile>
@@ -3092,6 +3102,9 @@
     <ClCompile Include="..\..\xbmc\utils\HttpRangeUtils.cpp">
       <Filter>utils</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\xbmc\win32\crts_caller.cpp">
+      <Filter>win32</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\xbmc\network\httprequesthandler\HTTPFileHandler.cpp">
       <Filter>network\httprequesthandler</Filter>
     </ClCompile>
@@ -3103,6 +3116,69 @@
     </ClCompile>
     <ClCompile Include="..\..\xbmc\input\InputManager.cpp">
       <Filter>input</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\network\httprequesthandler\HTTPImageTransformationHandler.cpp">
+      <Filter>network\httprequesthandler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\dialogs\GUIDialogSimpleMenu.cpp">
+      <Filter>dialogs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\video\jobs\VideoLibraryJob.cpp">
+      <Filter>video\jobs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\video\VideoLibraryQueue.cpp">
+      <Filter>video</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\video\jobs\VideoLibraryScanningJob.cpp">
+      <Filter>video\jobs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\video\jobs\VideoLibraryMarkWatchedJob.cpp">
+      <Filter>video\jobs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\video\jobs\VideoLibraryCleaningJob.cpp">
+      <Filter>video\jobs</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\utils\ProgressJob.cpp">
+      <Filter>utils</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\video\jobs\VideoLibraryProgressJob.cpp">
+      <Filter>video\jobs</Filter>
+	</ClCompile>
+    <ClCompile Include="..\..\xbmc\input\Key.cpp">
+      <Filter>input</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\network\httprequesthandler\python\HTTPPythonInvoker.cpp">
+      <Filter>network\httprequesthandler\python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\python\generated\AddonModuleXbmcwsgi.cpp">
+      <Filter>interfaces\python\generated</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiResponse.cpp">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiResponseBody.cpp">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\network\httprequesthandler\python\HTTPPythonWsgiInvoker.cpp">
+      <Filter>network\httprequesthandler\python</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiErrorStream.cpp">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiInputStream.cpp">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\addons\Webinterface.cpp">
+      <Filter>addons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\interfaces\generic\ILanguageInvoker.cpp">
+      <Filter>interfaces\generic</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\network\httprequesthandler\HTTPPythonHandler.cpp">
+      <Filter>network\httprequesthandler</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\xbmc\addons\AudioDecoder.cpp">
+      <Filter>addons</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -3637,6 +3713,9 @@
     <ClInclude Include="..\..\xbmc\addons\AudioEncoder.h">
       <Filter>addons</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\xbmc\addons\ContextItemAddon.h">
+      <Filter>addons</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\xbmc\addons\DllAddon.h">
       <Filter>addons</Filter>
     </ClInclude>
@@ -4009,9 +4088,6 @@
       <Filter>guilib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\IWindowManagerCallback.h">
-      <Filter>guilib</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\xbmc\guilib\Key.h">
       <Filter>guilib</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\guilib\LocalizeStrings.h">
@@ -5370,6 +5446,7 @@
     <ClInclude Include="..\..\xbmc\AutoSwitch.h" />
     <ClInclude Include="..\..\xbmc\DynamicDll.h" />
     <ClInclude Include="..\..\xbmc\CueDocument.h" />
+    <ClInclude Include="..\..\xbmc\ContextMenuManager.h" />
     <ClInclude Include="..\..\xbmc\FileItem.h" />
     <ClInclude Include="..\..\xbmc\GUIInfoManager.h" />
     <ClInclude Include="..\..\xbmc\GUIPassword.h" />
@@ -5859,6 +5936,9 @@
     <ClInclude Include="..\..\xbmc\interfaces\python\AddonPythonInvoker.h">
       <Filter>interfaces\python</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\python\ContextItemAddonInvoker.h">
+      <Filter>interfaces\python</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\xbmc\utils\StringValidation.h">
       <Filter>utils</Filter>
     </ClInclude>
@@ -5997,9 +6077,6 @@
     <ClInclude Include="..\..\xbmc\filesystem\win32\Win32SMBFile.h">
       <Filter>filesystem\win32</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\xbmc\utils\MarkWatchedJob.h">
-      <Filter>utils</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\xbmc\settings\DiscSettings.h">
       <Filter>settings</Filter>
     </ClInclude>
@@ -6014,6 +6091,9 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\cores\DataCacheCore.h">
       <Filter>cores</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\win32\crts_caller.h">
+      <Filter>win32</Filter>
     </ClInclude>
     <ClInclude Include="..\..\xbmc\filesystem\OverrideDirectory.h">
       <Filter>filesystem</Filter>
@@ -6038,6 +6118,63 @@
     </ClInclude>
     <ClInclude Include="..\..\xbmc\input\InputManager.h">
       <Filter>input</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\network\httprequesthandler\HTTPImageTransformationHandler.h">
+      <Filter>network\httprequesthandler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\dialogs\GUIDialogSimpleMenu.h">
+      <Filter>dialogs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\video\jobs\VideoLibraryJob.h">
+      <Filter>video\jobs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\video\VideoLibraryQueue.h">
+      <Filter>video</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\video\jobs\VideoLibraryScanningJob.h">
+      <Filter>video\jobs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\video\jobs\VideoLibraryMarkWatchedJob.h">
+      <Filter>video\jobs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\video\jobs\VideoLibraryCleaningJob.h">
+      <Filter>video\jobs</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\utils\ProgressJob.h">
+      <Filter>utils</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\video\jobs\VideoLibraryProgressJob.h">
+      <Filter>video\jobs</Filter>
+	</ClInclude>
+    <ClInclude Include="..\..\xbmc\input\Key.h">
+      <Filter>input</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\network\httprequesthandler\python\HTTPPythonRequest.h">
+      <Filter>network\httprequesthandler\python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\network\httprequesthandler\HTTPPythonHandler.h">
+      <Filter>network\httprequesthandler</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\network\httprequesthandler\python\HTTPPythonInvoker.h">
+      <Filter>network\httprequesthandler\python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiResponse.h">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiResponseBody.h">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\network\httprequesthandler\python\HTTPPythonWsgiInvoker.h">
+      <Filter>network\httprequesthandler\python</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiErrorStream.h">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\interfaces\legacy\wsgi\WsgiInputStream.h">
+      <Filter>interfaces\legacy\wsgi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\xbmc\addons\Webinterface.h">
+      <Filter>addons</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -6079,6 +6216,9 @@
     <CustomBuild Include="..\..\version.txt" />
     <CustomBuild Include="..\..\xbmc\win32\git_revision.t">
       <Filter>win32</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\..\xbmc\interfaces\swig\AddonModuleXbmcwsgi.i">
+      <Filter>interfaces\swig</Filter>
     </CustomBuild>
   </ItemGroup>
 </Project>
