@@ -507,6 +507,7 @@ bool CWinSystemX11::IsCurrentOutput(CStdString output)
 EGLConfig getEGLConfig(EGLDisplay eglDisplay, XVisualInfo *vInfo)
 {
   EGLint attributes[] = {
+	EGL_CONFIG_ID, 1,
     EGL_NONE
   };
   EGLint numConfigs;
