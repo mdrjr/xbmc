@@ -522,6 +522,11 @@ EGLConfig getEGLConfig(EGLDisplay eglDisplay, XVisualInfo *vInfo)
   for (EGLint i = 0;i < numConfigs;++i)
   {
     EGLint value;
+    eglGetConfigAttrib(eglDisplay, eglConfigs[i], EGL_CONFIG_ID, &value);
+    if(value != 1) {
+		CLog::Log(LOGERROR, "Mali: This isn't CONFIG_ID 1, this is CONFIG_ID %d", value);
+		break;
+	}
     if (!eglGetConfigAttrib(eglDisplay, eglConfigs[i], EGL_NATIVE_VISUAL_ID, &value))
     {
       CLog::Log(LOGERROR, "Failed to query EGL_NATIVE_VISUAL_ID for egl config.");
