@@ -400,6 +400,16 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
   m_videoBuffer.iWidth          = resultVideoWidth;
   m_videoBuffer.iHeight         = resultVideoHeight;
 
+  if (m_hints.aspect > 0.0 && !m_hints.forced_aspect)
+  {
+    m_videoBuffer.iDisplayWidth  = ((int)lrint(m_videoBuffer.iHeight * m_hints.aspect)) & -3;
+    if (m_videoBuffer.iDisplayWidth > m_videoBuffer.iWidth)
+    {
+      m_videoBuffer.iDisplayWidth  = m_videoBuffer.iWidth;
+      m_videoBuffer.iDisplayHeight = ((int)lrint(m_videoBuffer.iWidth / m_hints.aspect)) & -3;
+    }
+  }
+
   m_videoBuffer.data[0]         = NULL;
   m_videoBuffer.data[1]         = NULL;
   m_videoBuffer.data[2]         = NULL;
@@ -416,6 +426,12 @@ bool CDVDVideoCodecMFC::Open(CDVDStreamInfo &hints, CDVDCodecOptions &options) {
     m_videoBuffer.iLineSize[1]    = resultLineSize;
     m_videoBuffer.iLineSize[2]    = 0;
   } else if (finalFormat == V4L2_PIX_FMT_YUV420M) {
+    /*
+    Due to BUG in MFC v8 (-XU3) firmware the Y plane of the picture has the right line size,
+     but the U and V planes line sizes are actually halves of Y plane line size padded to 32
+     This is pure workaround for -XU3 MFCv8 firmware "MFC v8.0, F/W: 14yy, 01mm, 13dd (D):
+    */
+    resultLineSize = (resultLineSize + 31) &~31;
     m_videoBuffer.format          = RENDER_FMT_YUV420P;
     m_videoBuffer.iLineSize[1]    = resultLineSize >> 1;
     m_videoBuffer.iLineSize[2]    = resultLineSize >> 1;
